@@ -688,6 +688,22 @@ function E(id,unit,indicators,level,kind,gen,hints){var e={id:id,unit:unit,indic
    entries that use it. CR_MARKS stays at the end of this file. */
 function FR(n,d){return "\\frac{"+n+"}{"+d+"}";}
 
+/* Precision pairing (pattern-fix programme, Nov 8, 2026; mirrors the English
+   fmtPairDs): given the key's printed text and distractors as {v, fb}, print
+   each distractor with trailing zeros after the decimal comma so its
+   decimal-place count pairs with the key's count or with another
+   distractor's count. A value is only ever printed at a place count it
+   reaches exactly, so no value ever changes. The key is never reformatted. */
+function fmtPairDsD(keyT, ds) {
+  function exactDp(v) { for (var d = 0; d <= 6; d++) { if (Math.abs(v * Math.pow(10, d) - Math.round(v * Math.pow(10, d))) < 1e-9) return d; } return 6; }
+  var m = String(keyT).match(/,(\d+)/); var kd = m ? m[1].length : 0;
+  var pairIdx = -1;
+  for (var i = 0; i < ds.length; i++) { if (exactDp(ds[i].v) <= kd) { pairIdx = i; break; } }
+  if (pairIdx < 0) { var am = 0; ds.forEach(function (d) { am = Math.max(am, exactDp(d.v)); }); return ds.map(function (d) { return { t: fmtDF(d.v, am), fb: d.fb }; }); }
+  var common = 0; ds.forEach(function (d, i) { if (i !== pairIdx) common = Math.max(common, exactDp(d.v)); });
+  return ds.map(function (d, i) { return { t: fmtDF(d.v, i === pairIdx ? kd : common), fb: d.fb }; });
+}
+
 /* Unit 1: Rational Numbers */
 // Unit 1: Rational Numbers (Math 9, NL). Entries only; helpers prefixed u1.
 function u1gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { var t = a % b; a = b; b = t; } return a || 1; }
@@ -747,11 +763,11 @@ E("u1-between-two", 1, ["3.2"], 1, "gen", function () {
     var solD = "Le nombre doit être plus grand que \\(" + fmtD(a) + "\\) et plus petit que \\(" + fmtD(b) + "\\) : \\[ \\begin{aligned} " + fmtD(a) + " &< " + fmtD(c) + " < " + fmtD(b) + " \\end{aligned} \\] Donc le nombre entre les deux est <b>\\(" + fmtD(c) + "\\)</b>.";
     return mcq(promptD,
       { t: fmtD(c), fb: "Exact. Il est plus grand que la borne de gauche et plus petit que celle de droite." },
-      [
-        { t: fmtD(low), fb: "Ce nombre est plus petit que la borne de gauche." },
-        { t: fmtD(high), fb: "Ce nombre est plus grand que la borne de droite." },
-        { t: fmtD(a), fb: "C'est la borne de gauche elle-même, pas un nombre entre les deux." }
-      ],
+      fmtPairDsD(fmtD(c), [
+        { v: low, fb: "Ce nombre est plus petit que la borne de gauche." },
+        { v: high, fb: "Ce nombre est plus grand que la borne de droite." },
+        { v: a, fb: "C'est la borne de gauche elle-même, pas un nombre entre les deux." }
+      ]),
       solD, { mode: "between-dec", a: a, b: b });
   }
   var den = pick([6, 8, 10, 12]);
@@ -853,10 +869,11 @@ E("u1-ooo-evaluate-mc", 1, ["6.2"], 2, "gen", function () {
   var ds = [];
   var used = {};
   used[fmtD(val)] = 1;
-  errs.forEach(function (e) { var key = fmtD(u1round(e.v, 4)); if (!used[key] && ds.length < 3) { used[key] = 1; ds.push({ t: key, fb: e.fb }); } });
+  errs.forEach(function (e) { var key = fmtD(u1round(e.v, 4)); if (!used[key] && ds.length < 3) { used[key] = 1; ds.push({ t: key, v: u1round(e.v, 4), fb: e.fb }); } });
   var offs = [2, -2, 1, -1, 3, -3, 0.5, -0.5];
   var oi = 0;
-  while (ds.length < 3 && oi < offs.length) { var cand = u1round(val + offs[oi], 4); oi++; var k2 = fmtD(cand); if (!used[k2]) { used[k2] = 1; ds.push({ t: k2, fb: "Ceci vient d'une erreur de calcul à une des étapes." }); } }
+  while (ds.length < 3 && oi < offs.length) { var cand = u1round(val + offs[oi], 4); oi++; var k2 = fmtD(cand); if (!used[k2]) { used[k2] = 1; ds.push({ t: k2, v: cand, fb: "Ceci vient d'une erreur de calcul à une des étapes." }); } }
+  ds = fmtPairDsD(fmtD(val), ds.map(function (d) { return { v: d.v, fb: d.fb }; }));
   var prompt = "Calcule : " + expr;
   var solution = "Suis la priorité des opérations, les parenthèses d'abord, puis la multiplication, puis l'addition et la soustraction : " + steps + " Donc la valeur est <b>" + fmtD(val) + "</b>.";
   return mcq(prompt,
@@ -944,7 +961,7 @@ E("u1-ordering-reasoning-var", 1, ["3.1", "3.2"], 3, "var", varset([
     return mcq(prompt,
       { t: "0,3", fb: "Exact. Chaque pas sur la droite numérique ajoute 0,6." },
       [
-        { t: "0", fb: "Zéro rendrait les pas inégaux, car les écarts seraient différents." },
+        { t: "0,0", fb: "Zéro rendrait les pas inégaux, car les écarts seraient différents." },
         { t: "0,6", fb: "Cela saute un pas et donne un écart de 0,9 avant lui." },
         { t: "-0,6", fb: "Les nombres augmentent, donc le nombre manquant est positif." }
       ],
@@ -1038,7 +1055,7 @@ E("u2-square-from-root", 2, ["6.11"], 1, "gen", function(){
   if(mode==="decimal"){
     var k=ri(2,30); var rd=u2r1(k/10); var nd=u2r2(rd*rd);
     var dc=u2d3(nd,[u2r2(2*rd),u2r2((rd+1)*(rd+1)),u2r2(nd+1),u2r2(nd+0.1),u2r2(nd+2)]);
-    var dopts=dc.map(function(d){return {t:fmtD(d), fb:"Ce n'est pas "+fmtD(rd)+" fois "+fmtD(rd)+" : mets la racine elle-même au carré."};});
+    var dopts=fmtPairDsD(fmtD(nd), dc.map(function(d){return {v:d, fb:"Ce n'est pas "+fmtD(rd)+" fois "+fmtD(rd)+" : mets la racine elle-même au carré."};}));
     return mcq("Un nombre positif a pour racine carrée "+fmtD(rd)+". Quel est ce nombre ?", {t:fmtD(nd), fb:"Oui : "+fmtD(rd)+" au carré égale "+fmtD(nd)+"."}, dopts,
       "Mettre au carré défait une racine carrée : \\[ "+fmtD(rd)+"^{2} = "+fmtD(rd)+" \\times "+fmtD(rd)+" = "+fmtD(nd)+" \\] Le nombre est <b>"+fmtD(nd)+"</b>.",
       {mode:"decimal", r:rd});
@@ -1068,7 +1085,7 @@ E("u2-identify-square", 2, ["3.3"], 1, "gen", function(){
     var pool=[0.12,0.15,0.18,0.21,0.27,0.32,0.35,0.45,0.48,0.54,0.6,0.72,0.75,0.8,0.9,1.1,1.2,1.5,1.8,2.2,2.5,2.8,3.5];
     var sh=shuffle(pool); var ds=[]; var i=0;
     while(ds.length<3&&i<sh.length){if(sh[i]!==nd){ds.push(sh[i]);} i++;}
-    var opts=ds.map(function(d){return {t:fmtD(d), fb:"Aucun nombre fois lui-même ne donne "+fmtD(d)+" : essaie les dixièmes voisins."};});
+    var opts=fmtPairDsD(fmtD(nd), ds.map(function(d){return {v:d, fb:"Aucun nombre fois lui-même ne donne "+fmtD(d)+" : essaie les dixièmes voisins."};}));
     return mcq("Quel nombre est un carré parfait ?", {t:fmtD(nd), fb:"Oui : "+fmtD(rd)+" fois "+fmtD(rd)+" égale "+fmtD(nd)+"."}, opts,
       "Une seule valeur est un nombre fois lui-même : \\("+fmtD(rd)+" \\times "+fmtD(rd)+" = "+fmtD(nd)+"\\). Le carré parfait est <b>"+fmtD(nd)+"</b>.",
       {mode:"decimal", n:nd});
@@ -1128,9 +1145,9 @@ E("u2-spot-error", 2, ["6.10"], 2, "gen", function(){
     else { var kk=ri(13,39); if(kk===20){kk=21;} c=u2r1(kk/10); R=u2r1(2*c); }
     return mcq("Un élève écrit : \\(\\sqrt{"+fmtD(R)+"} = "+fmtD(c)+"\\) parce que "+fmtD(c)+" est la moitié de "+fmtD(R)+". Quelle erreur a été faite ?",
       {t:"L'élève a divisé le nombre par deux au lieu de trouver une valeur qui, au carré, le donne", fb:"Exact : une racine carrée défait un carré, pas une division par deux."},
-      [{t:"L'élève a arrondi la réponse à un nombre entier trop tôt dans le travail", fb:"L'arrondi n'est pas le problème ici : c'est la méthode qui est fausse."},
-       {t:"L'élève a mis le nombre de départ au carré au lieu de prendre sa racine carrée", fb:"Regarde encore : l'étape montrée divise le nombre de départ par deux."},
-       {t:"L'élève a placé la virgule décimale à la mauvaise position dans la réponse", fb:"Les décimales sont correctes : c'est l'opération choisie qui est fausse."}],
+      [{t:"L'élève a arrondi la réponse à un nombre entier trop tôt dans le travail, avant la fin", fb:"L'arrondi n'est pas le problème ici : c'est la méthode qui est fausse."},
+       {t:"L'élève a mis le nombre de départ au carré au lieu de prendre sa racine carrée exacte", fb:"Regarde encore : l'étape montrée divise le nombre de départ par deux."},
+       {t:"L'élève a placé la virgule décimale à la mauvaise position dans la réponse finale donnée", fb:"Les décimales sont correctes : c'est l'opération choisie qui est fausse."}],
       "Vérifie en mettant au carré : \\("+fmtD(c)+" \\times "+fmtD(c)+" = "+fmtD(u2r2(c*c))+"\\), pas "+fmtD(R)+". Diviser par deux ne défait pas un carré. L'erreur était <b>de diviser le nombre par deux au lieu de trouver une valeur qui, au carré, le donne</b>.",
       {mode:"halving", R:R});
   }
@@ -1149,7 +1166,7 @@ E("u2-spot-error", 2, ["6.10"], 2, "gen", function(){
     var n=ri(3,20); var cl=n*n;
     return mcq("Un élève écrit : \\(\\sqrt{"+n+"} = "+cl+"\\) parce que "+n+" fois "+n+" donne "+cl+". Quelle erreur a été faite ?",
       {t:"L'élève a mis le nombre au carré au lieu de prendre sa racine carrée", fb:"Exact : mettre au carré et prendre la racine sont des opérations opposées."},
-      [{t:"L'élève a divisé le nombre par deux au lieu de trouver une valeur qui, au carré, le donne", fb:"La division par deux n'a pas été utilisée : le travail a multiplié le nombre par lui-même."},
+      [{t:"L'élève a divisé le nombre par deux au lieu de prendre sa racine carrée", fb:"La division par deux n'a pas été utilisée : le travail a multiplié le nombre par lui-même."},
        {t:"L'élève a placé la virgule décimale à la mauvaise position dans la réponse", fb:"Aucune décimale n'est en jeu : l'opération elle-même a été inversée."},
        {t:"L'élève a arrondi la réponse à un nombre entier trop tôt dans le travail", fb:"L'arrondi n'est pas le problème : la réponse a grandi au lieu de diminuer."}],
       "Vérifie l'affirmation en la mettant au carré : \\("+cl+" \\times "+cl+" = "+(cl*cl)+"\\), pas "+n+". Une racine carrée défait un carré ; elle ne met pas au carré encore. L'erreur était <b>de mettre le nombre au carré au lieu de prendre sa racine carrée</b>.",
@@ -1158,8 +1175,8 @@ E("u2-spot-error", 2, ["6.10"], 2, "gen", function(){
   var a=ri(3,11); var b=ri(3,11); var R=a*a+b*b; var claim=a+b;
   return mcq("Un élève écrit : \\(\\sqrt{"+(a*a)+"+"+(b*b)+"} = "+a+"+"+b+" = "+claim+"\\). Quelle erreur a été faite ?",
     {t:"L'élève a pris la racine de chaque partie séparément avant d'additionner", fb:"Exact : la racine s'applique à la somme entière, pas à chaque partie."},
-    [{t:"L'élève a divisé la somme par deux au lieu de trouver une valeur qui, au carré, la donne", fb:"La division par deux n'a pas été utilisée : les racines ont été prises partie par partie."},
-     {t:"L'élève a mis la somme au carré au lieu de prendre la racine de la somme entière", fb:"Le carré n'a pas été utilisé : chaque partie a été traitée par sa racine séparément."},
+    [{t:"L'élève a divisé la somme par deux au lieu de prendre sa racine carrée", fb:"La division par deux n'a pas été utilisée : les racines ont été prises partie par partie."},
+     {t:"L'élève a mis la somme au carré au lieu de prendre sa racine", fb:"Le carré n'a pas été utilisé : chaque partie a été traitée par sa racine séparément."},
      {t:"L'élève a placé la virgule décimale à la mauvaise position dans la réponse", fb:"Aucune décimale n'est en jeu : la racine a été séparée sur la somme."}],
     "Additionne d'abord : \\("+(a*a)+"+"+(b*b)+" = "+R+"\\), et \\("+claim+" \\times "+claim+" = "+(claim*claim)+"\\), pas "+R+". L'erreur était <b>de prendre la racine de chaque partie séparément avant d'additionner</b>.",
     {mode:"split-root", a:a, b:b});
@@ -1256,9 +1273,9 @@ E("u2-why-approx", 2, ["6.7"], 2, "var", varset([
   function(){
     return mcq("Une calculatrice montre \\(\\sqrt{2} \\approx 1,414213562\\). Pourquoi la valeur à l'écran est-elle une approximation ?",
       {t:"Mettre 1,414213562 au carré ne donne pas exactement 2, seulement très proche de 2", fb:"Exact : l'écran est arrondi, donc son carré manque 2 de peu."},
-      [{t:"La calculatrice a fait une erreur de calcul quand elle a trouvé la racine", fb:"La calculatrice fonctionne bien : la limite est la taille de l'écran."},
-       {t:"La valeur est exacte car elle montre neuf décimales", fb:"Beaucoup de décimales veut encore dire arrondi : les chiffres continuent après."},
-       {t:"La racine de 2 est une fraction, et l'écran ne peut pas montrer les fractions", fb:"Le problème est les décimales sans fin, pas les fractions : certaines racines sont des fractions."}],
+      [{t:"La calculatrice a fait une erreur de calcul quand elle a trouvé la racine cherchée", fb:"La calculatrice fonctionne bien : la limite est la taille de l'écran."},
+       {t:"La valeur est exacte car elle montre neuf décimales à l'écran", fb:"Beaucoup de décimales veut encore dire arrondi : les chiffres continuent après."},
+       {t:"La racine de 2 est une fraction, et l'écran ne peut pas montrer les fractions de la calculatrice", fb:"Le problème est les décimales sans fin, pas les fractions : certaines racines sont des fractions."}],
       "Mettre la valeur de l'écran au carré donne environ \\(1,999999999\\), proche de 2 mais pas égal, car la vraie valeur continue après l'écran. La valeur de l'écran est <b>une approximation car elle est arrondie</b>.",
       {mode:"static-sqrt2"});
   },
@@ -1311,18 +1328,18 @@ E("u2-reasoning-var", 2, ["3.3","6.10"], 3, "var", varset([
   function(){
     return mcq("Rina affirme que 0,81 est un carré parfait parce que 81 est un carré parfait et que les chiffres sont les mêmes. Quelle option juge son affirmation correctement ?",
       {t:"L'affirmation est exacte, car 0,9 fois 0,9 égale 0,81", fb:"Exact : un nombre décimal est un carré parfait quand un nombre au carré le donne."},
-      [{t:"L'affirmation est fausse, car les décimaux ne peuvent jamais être des carrés parfaits", fb:"Les décimaux peuvent être des carrés : vérifie 0,9 fois 0,9 toi-même."},
-       {t:"L'affirmation est fausse, car 0,81 divisé par 2 n'est pas entier", fb:"Diviser par deux n'est pas le test : le test est de multiplier un nombre par lui-même."},
-       {t:"L'affirmation est exacte, car 81 divisé par 100 est un nombre entier", fb:"Le résultat est bon mais cette raison échoue : 81 sur 100 n'est pas entier."}],
+      [{t:"L'affirmation est fausse, car les décimaux ne sont jamais des carrés", fb:"Les décimaux peuvent être des carrés : vérifie 0,9 fois 0,9 toi-même."},
+       {t:"L'affirmation est fausse, car 0,81 sur 2 n'est pas entier", fb:"Diviser par deux n'est pas le test : le test est de multiplier un nombre par lui-même."},
+       {t:"L'affirmation est exacte, car 81 sur 100 est entier", fb:"Le résultat est bon mais cette raison échoue : 81 sur 100 n'est pas entier."}],
       "\\(0,9 \\times 0,9 = 0,81\\), donc un nombre fois lui-même donne 0,81. Le jugement correct est <b>l'affirmation est exacte, car 0,9 fois 0,9 égale 0,81</b>.",
       {mode:"static-decimal-claim"});
   },
   function(){
     return mcq("Dev affirme que \\("+FR(18,49)+"\\) est un carré parfait parce que 49 est un carré parfait. Quelle option juge son affirmation correctement ?",
       {t:"L'affirmation est fausse, car 18 n'est pas un carré parfait", fb:"Exact : le haut et le bas doivent tous deux être des carrés parfaits."},
-      [{t:"L'affirmation est exacte, car 49 est un carré parfait à lui seul", fb:"Une partie qui est un carré ne suffit pas : vérifie aussi la partie du haut."},
-       {t:"L'affirmation est fausse, car les fractions ne peuvent jamais être des carrés parfaits", fb:"Les fractions peuvent être des carrés quand les deux parties sont des nombres carrés."},
-       {t:"L'affirmation est exacte, car 18 est proche du nombre carré 16", fb:"Proche n'est pas égal : 18 lui-même devrait être un carré."}],
+      [{t:"L'affirmation est exacte, car 49 est un carré à lui seul", fb:"Une partie qui est un carré ne suffit pas : vérifie aussi la partie du haut."},
+       {t:"L'affirmation est fausse, car les fractions ne sont jamais des carrés", fb:"Les fractions peuvent être des carrés quand les deux parties sont des nombres carrés."},
+       {t:"L'affirmation est exacte, car 18 est proche du carré 16", fb:"Proche n'est pas égal : 18 lui-même devrait être un carré."}],
       "Une fraction est un carré parfait seulement quand son haut et son bas sont tous deux des carrés parfaits. Ici, 49 est un carré mais 18 ne l'est pas. Le jugement correct est <b>l'affirmation est fausse, car 18 n'est pas un carré parfait</b>.",
       {mode:"static-fraction-claim"});
   },
@@ -1330,8 +1347,8 @@ E("u2-reasoning-var", 2, ["3.3","6.10"], 3, "var", varset([
     return mcq("Tess estime \\(\\sqrt{48}\\) à 24, en disant qu'elle a divisé 48 par deux pour défaire le carré. Quelle option juge sa méthode correctement ?",
       {t:"La méthode est fausse : 48 se trouve entre 36 et 49, donc la racine se trouve entre 6 et 7", fb:"Exact : les carrés repères donnent l'intervalle, et diviser par deux n'est pas prendre la racine."},
       [{t:"La méthode est bonne : diviser un nombre par deux donne toujours sa racine carrée", fb:"Teste-la sur 16 : diviser par deux donne 8, mais la racine carrée est 4."},
-       {t:"La méthode est fausse : la racine de 48 est exactement 7 car 48 s'arrondit à 49", fb:"Arrondir le nombre de départ ne rend pas la racine exacte."},
-       {t:"La méthode est bonne : 24 fois 24 est assez proche de 48 pour une estimation", fb:"24 au carré donne 576, ce qui n'est pas du tout proche de 48."}],
+       {t:"La méthode est fausse : la racine de 48 est exactement 7 car 48 s'arrondit à 49, le carré parfait voisin", fb:"Arrondir le nombre de départ ne rend pas la racine exacte."},
+       {t:"La méthode est bonne : 24 fois 24 est assez proche de 48 pour une estimation qui suffit ici", fb:"24 au carré donne 576, ce qui n'est pas du tout proche de 48."}],
       "Les carrés repères donnent \\(36 < 48 < 49\\), donc \\(6 < \\sqrt{48} < 7\\), et diviser par deux ne défait jamais un carré. Le jugement correct est <b>la méthode est fausse : la racine se trouve entre 6 et 7</b>.",
       {mode:"static-estimate-flaw"});
   }
@@ -1558,6 +1575,7 @@ E("u3-zero-exponent", 3, ["3.9"], 2, "gen", function () {
     { v: a2, fb: "Cela garde la base comme réponse. Un exposant zéro donne un." },
     { v: -1, fb: "Cela a le mauvais signe. Un exposant zéro donne un positif." }
   ]);
+  if (Math.abs(a2 - Math.round(a2)) > 1e-9) { for (var zi = 0; zi < ds2.length; zi++) { if (ds2[zi].t === "0") { ds2[zi].t = "0,0"; break; } } }
   return mcq("Calcule \\(" + shownA + "\\).",
     { t: "1", fb: "Exact. Toute base non nulle à la puissance zéro égale un." }, ds2,
     "Une puissance d'exposant \\(0\\) avec une base non nulle égale \\(1\\) : \\[ \\begin{aligned} " + shownA + " &= 1 \\end{aligned} \\] Donc la valeur est <b>1</b>.",
@@ -1786,9 +1804,9 @@ E("u3-explanations-var", 3, ["3.5", "3.8"], 3, "var", varset([
     return mcq("Quelle explication montre pourquoi \\(2^{3}\\) et \\(3^{2}\\) ont des valeurs différentes ?",
       { t: "\\(2^{3}=2\\times 2\\times 2=8\\) alors que \\(3^{2}=3\\times 3=9\\)", fb: "Exact. La multiplication répétée est différente dans chaque puissance." },
       [
-        { t: "\\(2^{3}=2\\times 3=6\\) alors que \\(3^{2}=3\\times 2=6\\), donc elles sont égales", fb: "Cela multiplie la base par l'exposant dans chaque puissance." },
-        { t: "\\(2^{3}=3\\times 3=9\\) alors que \\(3^{2}=2\\times 2=4\\), ce qui donne 9 et 4", fb: "Cela répète l'exposant au lieu de la base." },
-        { t: "\\(2^{3}\\) et \\(3^{2}\\) valent toutes les deux 8 parce que les chiffres sont les mêmes", fb: "Cela garde une valeur et ignore la deuxième puissance." }
+        { t: "\\(2^{3}=2\\times 3=6\\) alors que \\(3^{2}=3\\times 2=6\\)", fb: "Cela multiplie la base par l'exposant dans chaque puissance." },
+        { t: "\\(2^{3}=3\\times 3=9\\) alors que \\(3^{2}=2\\times 2=4\\)", fb: "Cela répète l'exposant au lieu de la base." },
+        { t: "\\(2^{3}\\) et \\(3^{2}\\) valent toutes les deux 8", fb: "Cela garde une valeur et ignore la deuxième puissance." }
       ],
       "Écris chaque puissance comme multiplication répétée : \\[ \\begin{aligned} 2^{3} &= 2\\times 2\\times 2 = 8 \\\\ 3^{2} &= 3\\times 3 = 9 \\end{aligned} \\] Donc la bonne explication est <b>\\(2^{3}=2\\times 2\\times 2=8\\) alors que \\(3^{2}=3\\times 3=9\\)</b>.",
       { mode: "explain-interchanged" });
@@ -1797,8 +1815,8 @@ E("u3-explanations-var", 3, ["3.5", "3.8"], 3, "var", varset([
     return mcq("Quel énoncé explique la différence entre \\((-3)^{2}\\) et \\(-3^{2}\\) ?",
       { t: "Dans \\((-3)^{2}\\), la base est \\(-3\\), ce qui donne 9 ; dans \\(-3^{2}\\), seul 3 est mis au carré, ce qui donne -9", fb: "Exact. Les parenthèses changent la base." },
       [
-        { t: "Les deux valent 9 parce que mettre au carré rend toujours une valeur positive dans tous les cas", fb: "Cela oublie le signe négatif placé à l'extérieur de la deuxième puissance." },
-        { t: "Les deux valent -9 parce que le signe négatif reste toujours avec la réponse", fb: "Cela oublie les parenthèses qui font de -3 la base dans la première puissance." },
+        { t: "Les deux valent 9 parce que mettre au carré rend toujours une valeur positive dans tous les cas et pour toutes les bases", fb: "Cela oublie le signe négatif placé à l'extérieur de la deuxième puissance." },
+        { t: "Les deux valent -9 parce que le signe négatif reste toujours avec la réponse dans les deux puissances", fb: "Cela oublie les parenthèses qui font de -3 la base dans la première puissance." },
         { t: "Dans \\((-3)^{2}\\), la réponse est -9 et dans \\(-3^{2}\\), la réponse est 9", fb: "Cela inverse les deux résultats. Vérifie chaque base avec soin." }
       ],
       "Dans la première puissance, les parenthèses font de \\(-3\\) la base : \\[ \\begin{aligned} (-3)^{2} &= (-3)\\times (-3) = 9 \\\\ -3^{2} &= -(3\\times 3) = -9 \\end{aligned} \\] Donc le bon énoncé est <b>Dans \\((-3)^{2}\\), la base est \\(-3\\), ce qui donne 9 ; dans \\(-3^{2}\\), seul 3 est mis au carré, ce qui donne -9</b>.",
@@ -2274,9 +2292,10 @@ E("u1-ooo-brackets-mc", 1, ["6.2"], 2, "gen", function () {
     { t: fmtD(u1round(P.E3, 2)), fb: "Cela additionne " + fmtD(P.f) + " avant la division finale, mais la division se fait avant l'addition." },
     { t: fmtD(u1round(P.E4, 2)), fb: "Cela additionne le montant des parenthèses à " + fmtD(P.a) + " au lieu de le soustraire : c'est une erreur de signe." }
   ];
+  var selDs = fmtPairDsD(fmtD(P.V), shuffle(errs).slice(0, 3).map(function (e) { return { v: parseFloat(String(e.t).replace(/[\s\u00A0]/g, "").replace(",", ".")), fb: e.fb }; }));
   return mcq(prompt,
     { t: fmtD(P.V), fb: "Exact. On fait d'abord les parenthèses intérieures, puis les divisions et les multiplications de gauche à droite." },
-    shuffle(errs).slice(0, 3),
+    selDs,
     solution, { mode: "ooo-brackets", a: P.a, c: P.c, d: P.d, e: P.e, f: P.f, g: P.g });
 }, ["Fais d'abord les parenthèses les plus intérieures, puis fais les divisions et les multiplications de gauche à droite.", "Additionne d'abord la fraction et le nombre décimal dans les parenthèses intérieures."]);
 
@@ -2441,7 +2460,7 @@ E("u2-sqrt-fraction", 2, ["6.9"], 1, "gen", function(){
   }
   var k=ri(3,39); var rd=u2r1(k/10); var nd=u2r2(rd*rd);
   var dc=u2d3(rd,[u2r1(rd+0.1),u2r1(rd-0.1),u2r1(rd*2),u2r1(rd+0.2),u2r1(rd/2),u2r1(rd+1)]);
-  var dopts=dc.map(function(d){return {t:fmtD(d), fb:fmtD(d)+" au carré donne "+fmtD(u2r2(d*d))+", et non "+fmtD(nd)+" : essaie un autre dixième."};});
+  var dopts=fmtPairDsD(fmtD(rd), dc.map(function(d){return {v:d, fb:fmtD(d)+" au carré donne "+fmtD(u2r2(d*d))+", et non "+fmtD(nd)+" : essaie un autre dixième."};}));
   return mcq("Que vaut \\(\\sqrt{"+fmtD(nd)+"}\\) ? Donne la valeur exacte.", {t:fmtD(rd), fb:"Oui : "+fmtD(rd)+" fois "+fmtD(rd)+" donne "+fmtD(nd)+"."}, dopts,
     "Trouve le nombre décimal qui, multiplié par lui-même, donne "+fmtD(nd)+": \\[ \\begin{aligned} "+fmtD(rd)+" \\times "+fmtD(rd)+" &= "+fmtD(nd)+" \\\\ \\sqrt{"+fmtD(nd)+"} &= "+fmtD(rd)+" \\end{aligned} \\] La racine carrée est <b>"+fmtD(rd)+"</b>.",
     {mode:"decimal", n:nd});
@@ -2476,7 +2495,8 @@ E("u2-number-from-root", 2, ["6.11"], 2, "gen", function(){
     {v:u2r2(nd+0.1), fb:"C'est un peu plus que la racine mise au carré : multiplie la racine par elle-même exactement."}
   ];
   var dopts=[], seen2={};
-  for(var j=0;j<cands2.length&&dopts.length<3;j++){var v=cands2[j].v; if(v!==nd&&v>0&&!seen2[v]){seen2[v]=1;dopts.push({t:fmtD(v), fb:cands2[j].fb});}}
+  for(var j=0;j<cands2.length&&dopts.length<3;j++){var v=cands2[j].v; if(v!==nd&&v>0&&!seen2[v]){seen2[v]=1;dopts.push({v:v, fb:cands2[j].fb});}}
+  dopts=fmtPairDsD(fmtD(nd), dopts);
   return mcq("Un nombre positif a pour racine carrée "+fmtD(rd)+". Quel est ce nombre ?", {t:fmtD(nd), fb:"Oui : "+fmtD(rd)+" fois "+fmtD(rd)+" donne "+fmtD(nd)+"."}, dopts,
     "Mettre au carré annule une racine carrée : \\[ \\begin{aligned} "+fmtD(rd)+"^{2} &= "+fmtD(rd)+" \\times "+fmtD(rd)+" \\\\ &= "+fmtD(nd)+" \\end{aligned} \\] Le nombre est <b>"+fmtD(nd)+"</b>.",
     {mode:"decimal", r:rd});
@@ -3501,9 +3521,9 @@ E("u5-verify-error", 5, ["8.20"], 2, "gen", function () {
   var promptB = "Un élève vérifie si \\(x = " + fmtD(w) + "\\) résout \\(" + u5lin(a, b) + " = " + fmtD(c) + "\\). L'élève écrit que le côté gauche vaut " + fmtD(fakeL) + " et conclut que \\(x = " + fmtD(w) + "\\) est la solution. Donne la conclusion correcte au sujet de cette vérification.";
   var corrB = "Il y a une erreur de calcul : le côté gauche vaut en réalité " + fmtD(trueL) + ", pas " + fmtD(c) + ", donc \\(x = " + fmtD(w) + "\\) n'est pas la solution.";
   var dsB = [
-    { t: "La vérification est entièrement correcte, et \\(x = " + fmtD(w) + "\\) est la solution de l'équation.", fb: "Refais la substitution toi-même : le côté gauche ne donne pas la valeur écrite par l'élève." },
-    { t: "Le calcul est correct, mais les deux côtés ne sont toujours pas égaux, donc ce n'est pas la solution.", fb: "Le côté gauche indiqué est faux ; refaire la substitution donne une autre valeur." },
-    { t: "Toute valeur substituée dans une équation est automatiquement une solution de cette équation.", fb: "La substitution n'est que le test ; la valeur est une solution seulement quand les deux côtés donnent le même résultat." }
+    { t: "La vérification est entièrement correcte, et \\(x = " + fmtD(w) + "\\) est la solution de l'équation, avec les deux côtés égaux.", fb: "Refais la substitution toi-même : le côté gauche ne donne pas la valeur écrite par l'élève." },
+    { t: "Le calcul est correct, mais les deux côtés ne sont toujours pas égaux, donc ce n'est pas la solution ici.", fb: "Le côté gauche indiqué est faux ; refaire la substitution donne une autre valeur." },
+    { t: "Toute valeur substituée dans une équation est automatiquement une solution de cette équation dans tous les cas.", fb: "La substitution n'est que le test ; la valeur est une solution seulement quand les deux côtés donnent le même résultat." }
   ];
   var solB = "Refais la substitution avec soin : \\[ \\begin{aligned} " + u5lin(a, b) + " &= " + fmtD(a) + "(" + fmtD(w) + ")" + (b >= 0 ? "+" + fmtD(b) : "-" + fmtD(-b)) + " \\\\ &= " + fmtD(trueL) + " \\end{aligned} \\] Le côté gauche ne vaut pas " + fmtD(c) + ", donc la conclusion correcte est que <b>" + corrB + "</b>";
   return mcq(promptB, { t: corrB, fb: "Exact : refaire la substitution révèle l'erreur et le vrai côté gauche." }, dsB, solB, { mode: "slip", a: a, b: b, c: c, w: w });
@@ -3514,7 +3534,7 @@ E("u5-meaning-of-solution", 5, ["8.21"], 2, "var", varset([
   function () {
     var sol = "Résous d'abord, puis relis la réponse dans le contexte de l'histoire : \\[ \\begin{aligned} 8n+5 &= 53 \\\\ 8n &= 48 \\\\ n &= 6 \\end{aligned} \\] Ici, n compte les billets, donc la solution veut dire que <b>tu peux acheter 6 billets pour un total de 53 $</b>.";
     return mcq("Les billets de concert coûtent 8 $ chacun, plus des frais de réservation de 5 $ payés une fois. L'équation \\(8n + 5 = 53\\) modélise le coût total, et sa solution est \\(n = 6\\). Que veut dire la solution dans cette situation ?", { t: "Tu peux acheter 6 billets pour un total de 53 $.", fb: "Exact : n compte les billets, et 6 donne un total de 53 $." }, [
-      { t: "Chaque billet coûte 6 $ en fin de compte.", fb: "Le 6 compte les billets ; le prix d'un billet reste 8 $." },
+      { t: "Chaque billet coûte 6 $ en fin de compte pour chaque personne.", fb: "Le 6 compte les billets ; le prix d'un billet reste 8 $." },
       { t: "Les frais de réservation reviennent à 6 $.", fb: "Les frais de réservation sont les 5 $ fixes ; le 6 est la valeur de n, le nombre de billets." },
       { t: "Six amis paient chacun des frais de 53 $.", fb: "Les 53 $ sont le coût total unique, pas des frais payés par chaque personne." }
     ], sol, { mode: "meaning-tickets" });
@@ -3523,7 +3543,7 @@ E("u5-meaning-of-solution", 5, ["8.21"], 2, "var", varset([
     var sol = "Résous d'abord, puis relis la réponse dans le contexte de l'histoire : \\[ \\begin{aligned} 3+2h &= 15 \\\\ 2h &= 12 \\\\ h &= 6 \\end{aligned} \\] Ici, h compte les heures, donc la solution veut dire que <b>après 6 heures, la température atteint 15 degrés</b>.";
     return mcq("Un matin froid commence à 3 degrés et la température monte de 2 degrés chaque heure. L'équation \\(3 + 2h = 15\\) modélise la température, et sa solution est \\(h = 6\\). Que veut dire la solution dans cette situation ?", { t: "Après 6 heures, la température atteint 15 degrés.", fb: "Exact : h compte les heures, et 6 donne une température de 15 degrés." }, [
       { t: "La température monte de 6 degrés chaque heure.", fb: "La montée chaque heure est les 2 degrés fixes ; le 6 est la valeur de h, les heures." },
-      { t: "La température commence à 6 degrés.", fb: "La température de départ est les 3 degrés fixes ; le 6 compte les heures." },
+      { t: "La température commence à 6 degrés au début du matin.", fb: "La température de départ est les 3 degrés fixes ; le 6 compte les heures." },
       { t: "Il faut 15 heures pour atteindre 6 degrés.", fb: "Cela échange les deux nombres : 15 est la température cible et 6 est les heures." }
     ], sol, { mode: "meaning-temp" });
   },
@@ -3531,7 +3551,7 @@ E("u5-meaning-of-solution", 5, ["8.21"], 2, "var", varset([
     var sol = "Résous d'abord, puis relis la réponse dans le contexte de l'histoire : \\[ \\begin{aligned} 20+7w &= 62 \\\\ 7w &= 42 \\\\ w &= 6 \\end{aligned} \\] Ici, w compte les semaines, donc la solution veut dire que <b>après 6 semaines d'épargne, Mia a 62 $</b>.";
     return mcq("Mia a 20 $ d'économisés et ajoute 7 $ chaque semaine. L'équation \\(20 + 7w = 62\\) modélise ses économies, et sa solution est \\(w = 6\\). Que veut dire la solution dans cette situation ?", { t: "Après 6 semaines d'épargne, Mia a 62 $.", fb: "Exact : w compte les semaines, et 6 donne des économies de 62 $." }, [
       { t: "Mia économise 6 $ chaque semaine.", fb: "Elle économise les 7 $ fixes chaque semaine ; le 6 est la valeur de w, les semaines." },
-      { t: "Mia a commencé avec 6 $ d'économisés.", fb: "Elle a commencé avec les 20 $ fixes ; le 6 compte les semaines d'épargne." },
+      { t: "Mia a commencé avec seulement 6 $ d'économisés au départ.", fb: "Elle a commencé avec les 20 $ fixes ; le 6 compte les semaines d'épargne." },
       { t: "Mia aura 6 $ après 62 semaines.", fb: "Cela échange les deux nombres : 62 dollars est le but et 6 est les semaines." }
     ], sol, { mode: "meaning-savings" });
   },
@@ -3554,7 +3574,7 @@ E("u5-meaning-of-solution", 5, ["8.21"], 2, "var", varset([
   function () {
     var sol = "Résous d'abord, puis relis la réponse dans le contexte de l'histoire : \\[ \\begin{aligned} 25+0,5g &= 31 \\\\ 0,5g &= 6 \\\\ g &= 12 \\end{aligned} \\] Ici, g compte les gigaoctets de données, donc la solution veut dire que <b>le client a utilisé 12 Go de données ce mois-là</b>.";
     return mcq("Un forfait de téléphone coûte 25 $ par mois plus 0,50 $ pour chaque gigaoctet (Go) de données utilisé. L'équation \\(25 + 0,5g = 31\\) modélise une facture, et sa solution est \\(g = 12\\). Que veut dire la solution dans cette situation ?", { t: "Le client a utilisé 12 Go de données ce mois-là.", fb: "Exact : g compte les gigaoctets, et 12 donne une facture de 31 $." }, [
-      { t: "Le coût de base mensuel est de 12 $.", fb: "Le coût de base est les 25 $ fixes ; le 12 est la valeur de g, les gigaoctets." },
+      { t: "Le coût de base mensuel du forfait est de 12 $ chaque mois.", fb: "Le coût de base est les 25 $ fixes ; le 12 est la valeur de g, les gigaoctets." },
       { t: "Les données coûtent 12 $ pour chaque gigaoctet.", fb: "Les données coûtent les 0,50 $ fixes par gigaoctet ; le 12 compte les gigaoctets utilisés." },
       { t: "La facture couvre 12 mois de service.", fb: "L'équation modélise un seul mois ; le 12 compte les gigaoctets, pas les mois." }
     ], sol, { mode: "meaning-phone" });
@@ -3758,41 +3778,41 @@ E("u5-compare-eq-ineq-process", 5, ["8.28"], 3, "var", varset([
   function () {
     var sol = "Les deux problèmes divisent par \\(-2\\), mais seule l'inéquation change de sens : \\[ \\begin{aligned} -2x &= 6 \\\\ x &= -3 \\end{aligned} \\] \\[ \\begin{aligned} -2x &> 6 \\\\ x &< -3 \\end{aligned} \\] Donc l'énoncé vrai est que <b>les étapes sont les mêmes, mais le signe d'inéquation s'inverse quand on divise par un nombre négatif</b>.";
     return mcq("Compare la résolution de \\(-2x = 6\\) avec celle de \\(-2x > 6\\). Quel énoncé au sujet des deux démarches est vrai ?", { t: "Les étapes sont les mêmes, mais le signe d'inéquation s'inverse quand les deux côtés sont divisés par -2.", fb: "Exact : diviser par un nombre négatif inverse un signe d'inéquation, et une équation n'a pas de signe à inverser." }, [
-      { t: "Les démarches sont identiques en tout, y compris le sens final du signe.", fb: "Une équation n'a pas de signe d'inéquation ; seule l'inéquation peut s'inverser, et elle le fait ici." },
-      { t: "L'équation inverse aussi quelque chose quand les deux côtés sont divisés par -2.", fb: "Les signes d'égalité ne s'inversent jamais ; la règle d'inversion appartient aux inéquations seulement." },
-      { t: "Aucun des deux problèmes n'a besoin de l'étape de division, car on peut simplement laisser tomber le -2.", fb: "Le coefficient doit être défait dans les deux problèmes ; le laisser tomber change la valeur de x." }
+      { t: "Les démarches sont identiques en tout, y compris le sens final du signe à la toute fin du travail.", fb: "Une équation n'a pas de signe d'inéquation ; seule l'inéquation peut s'inverser, et elle le fait ici." },
+      { t: "L'équation inverse aussi quelque chose quand les deux côtés sont divisés par -2 pendant la résolution du problème.", fb: "Les signes d'égalité ne s'inversent jamais ; la règle d'inversion appartient aux inéquations seulement." },
+      { t: "Aucun des deux problèmes n'a besoin de l'étape de division, car on peut simplement laisser tomber le -2 ici.", fb: "Le coefficient doit être défait dans les deux problèmes ; le laisser tomber change la valeur de x." }
     ], sol, { mode: "cmp-proc-neg" });
   },
   function () {
     var sol = "Les étapes de résolution sont identiques parce que le diviseur est positif : \\[ \\begin{aligned} 3x &= 12 \\\\ x &= 4 \\end{aligned} \\] \\[ \\begin{aligned} 3x &< 12 \\\\ x &< 4 \\end{aligned} \\] La différence est dans les réponses, donc l'énoncé vrai est que <b>les démarches sont les mêmes, mais l'équation a une seule solution et l'inéquation a un ensemble de valeurs</b>.";
     return mcq("Compare la résolution de \\(3x = 12\\) avec celle de \\(3x < 12\\). Quel énoncé au sujet des deux démarches est vrai ?", { t: "Les démarches sont les mêmes ; seules les réponses diffèrent, une seule valeur contre un ensemble de valeurs.", fb: "Exact : diviser par 3, un nombre positif, fonctionne de la même façon, et les réponses diffèrent en nature." }, [
-      { t: "Le signe d'inéquation s'inverse, parce que chaque étape de division inverse une inéquation.", fb: "Le signe s'inverse seulement pour un diviseur négatif ; 3 est positif, donc aucune inversion ne se produit." },
-      { t: "L'inéquation demande une étape de plus que l'équation n'a pas.", fb: "Les deux prennent la même seule étape de division ; aucune étape n'est ajoutée pour l'inéquation." },
-      { t: "L'équation a un ensemble de solutions et l'inéquation en a une seule.", fb: "C'est l'inverse : l'équation fixe x à une seule valeur, l'inéquation permet un ensemble de valeurs." }
+      { t: "Le signe d'inéquation s'inverse, parce que chaque étape de division inverse une inéquation dans tous ces problèmes.", fb: "Le signe s'inverse seulement pour un diviseur négatif ; 3 est positif, donc aucune inversion ne se produit." },
+      { t: "L'inéquation demande une étape de résolution de plus que l'équation n'a pas du tout dans ce cas.", fb: "Les deux prennent la même seule étape de division ; aucune étape n'est ajoutée pour l'inéquation." },
+      { t: "L'équation a un ensemble de solutions et l'inéquation en a une seule dans le problème montré ici.", fb: "C'est l'inverse : l'équation fixe x à une seule valeur, l'inéquation permet un ensemble de valeurs." }
     ], sol, { mode: "cmp-proc-pos" });
   },
   function () {
     var sol = "Additionner et soustraire se comportent de la même façon dans les deux : \\[ \\begin{aligned} x+5 &= 9 \\\\ x &= 4 \\end{aligned} \\] \\[ \\begin{aligned} x+5 &> 9 \\\\ x &> 4 \\end{aligned} \\] Aucune inversion de signe ne se produit pour une addition, donc l'énoncé vrai est que <b>les étapes sont les mêmes et le sens du signe reste le même</b>.";
     return mcq("Compare la résolution de \\(x + 5 = 9\\) avec celle de \\(x + 5 > 9\\). Quel énoncé au sujet des deux démarches est vrai ?", { t: "Les étapes sont les mêmes, et soustraire 5 des deux côtés laisse le sens de l'inéquation inchangé.", fb: "Exact : additionner ou soustraire le même montant ne change jamais le sens d'une inéquation." }, [
-      { t: "Le signe d'inéquation s'inverse quand on soustrait 5 des deux côtés.", fb: "L'inversion est liée à la multiplication ou à la division par un nombre négatif, pas à la soustraction d'une constante." },
+      { t: "Le signe d'inéquation s'inverse quand on soustrait 5 des deux côtés dans ce problème.", fb: "L'inversion est liée à la multiplication ou à la division par un nombre négatif, pas à la soustraction d'une constante." },
       { t: "L'inéquation doit être résolue par essais, tandis que l'équation se résout par opérations inverses.", fb: "Les deux se résolvent ici par la même opération inverse : soustraire 5 des deux côtés." },
-      { t: "Les deux problèmes ont exactement la même réponse, la seule valeur 4.", fb: "La réponse de l'inéquation est un ensemble de valeurs plus grandes que 4, pas la seule valeur 4." }
+      { t: "Les deux problèmes ont exactement la même réponse, la seule et unique valeur 4.", fb: "La réponse de l'inéquation est un ensemble de valeurs plus grandes que 4, pas la seule valeur 4." }
     ], sol, { mode: "cmp-proc-add" });
   },
   function () {
     var sol = "Les deux problèmes demandent d'isoler le terme en x, et seule l'inéquation s'inverse : \\[ \\begin{aligned} -x &= 4 \\\\ x &= -4 \\end{aligned} \\] \\[ \\begin{aligned} -x &\\le 4 \\\\ x &\\ge -4 \\end{aligned} \\] Donc l'énoncé vrai est que <b>diviser par -1 inverse l'inéquation mais laisse la réponse de l'équation à une seule valeur</b>.";
     return mcq("Compare la résolution de \\(-x = 4\\) avec celle de \\(-x \\le 4\\). Quel énoncé au sujet des deux démarches est vrai ?", { t: "Les deux divisent par -1, mais seule l'inéquation s'inverse, ce qui change son sens pour « supérieur ou égal ».", fb: "Exact : le coefficient caché est -1, et diviser par lui inverse l'inéquation seulement." }, [
-      { t: "Aucune réponse ne change de sens, parce que le coefficient de x ressemble à un simple signe moins.", fb: "Ce signe moins est un coefficient de -1, et diviser par un nombre négatif inverse une inéquation." },
-      { t: "La réponse de l'équation devient un ensemble et celle de l'inéquation devient une seule valeur.", fb: "C'est l'inverse : les équations donnent une seule valeur ici, les inéquations donnent un ensemble." },
-      { t: "L'inéquation garde son sens parce que les parties « égal » ne s'inversent jamais.", fb: "Le signe entier, partie « égal » incluse, s'inverse quand on divise par un nombre négatif." }
+      { t: "Aucune réponse ne change de sens, parce que le coefficient de x ressemble à un simple signe moins placé devant le x.", fb: "Ce signe moins est un coefficient de -1, et diviser par un nombre négatif inverse une inéquation." },
+      { t: "La réponse de l'équation devient un ensemble et celle de l'inéquation devient une seule valeur ici.", fb: "C'est l'inverse : les équations donnent une seule valeur ici, les inéquations donnent un ensemble." },
+      { t: "L'inéquation garde son sens parce que les parties « égal » ne s'inversent jamais du tout dans ce cas.", fb: "Le signe entier, partie « égal » incluse, s'inverse quand on divise par un nombre négatif." }
     ], sol, { mode: "cmp-proc-negone" });
   },
   function () {
     var sol = "La valeur limite est partagée, et les étapes de résolution sont les mêmes : \\[ \\begin{aligned} 5x &= 20 \\\\ x &= 4 \\end{aligned} \\] \\[ \\begin{aligned} 5x &\\ge 20 \\\\ x &\\ge 4 \\end{aligned} \\] Donc l'énoncé vrai est que <b>la solution de l'équation est la valeur limite de la solution de l'inéquation, et elle y est incluse</b>.";
     return mcq("Compare la résolution de \\(5x = 20\\) avec celle de \\(5x \\ge 20\\). Quel énoncé au sujet des deux démarches est vrai ?", { t: "Les démarches sont les mêmes, et la solution de l'équation, 4, est la valeur limite de la solution de l'inéquation.", fb: "Exact : les deux divisent par 5, et 4 est là où commence l'ensemble de valeurs de l'inéquation." }, [
-      { t: "Les démarches diffèrent parce que le signe d'inéquation s'inverse quand on divise par 5.", fb: "Cinq est positif, donc aucune inversion ne se produit ; les démarches sont les mêmes, étape par étape." },
-      { t: "La solution de l'équation, 4, ne fait pas partie de la réponse de l'inéquation du tout.", fb: "La partie « ou égal » inclut la valeur limite, donc 4 satisfait bien l'inéquation." },
-      { t: "L'inéquation n'a pas de valeur limite, car sa réponse est un ensemble de valeurs.", fb: "Chaque ensemble de valeurs ici commence à une valeur limite ; ici, c'est 4." }
+      { t: "Les démarches diffèrent parce que le signe d'inéquation s'inverse quand on divise par le nombre positif 5 dans ce problème.", fb: "Cinq est positif, donc aucune inversion ne se produit ; les démarches sont les mêmes, étape par étape." },
+      { t: "La solution de l'équation, 4, ne fait pas partie de la réponse de l'inéquation du tout dans ce problème.", fb: "La partie « ou égal » inclut la valeur limite, donc 4 satisfait bien l'inéquation." },
+      { t: "L'inéquation n'a pas de valeur limite, car sa réponse est un ensemble de valeurs qui continue sans fin.", fb: "Chaque ensemble de valeurs ici commence à une valeur limite ; ici, c'est 4." }
     ], sol, { mode: "cmp-proc-boundary" });
   }
 ]), ["Résous les deux problèmes côte à côte et surveille la seule étape où ils peuvent différer.", "Fais d'abord les étapes partagées ; demande-toi ensuite si un diviseur négatif apparaît, car c'est la seule différence de démarche."]);
@@ -3924,13 +3944,14 @@ E("u5-ineq-substitution-check", 5, ["8.2"], 2, "gen", function () {
   var ineq = u5lin(a, b) + " " + u5sym(r) + " " + fmtD(C);
   var prompt = "Un élève vérifie si \\(x = " + fmtD(w) + "\\) est une solution de \\(" + ineq + "\\). L'élève substitue et écrit \\(" + sub + " = " + fmtD(shownL) + "\\), puis écrit que \\(" + fmtD(shownL) + " " + u5sym(r) + " " + fmtD(C) + "\\) est " + (shownClaim ? "vrai" : "faux") + ", donc \\(x = " + fmtD(w) + "\\) " + u5bSolWord(shownClaim) + ". Quel énoncé au sujet de cette vérification est correct ?";
   function optText(err, solFlag) { return "Le travail montré " + (err ? "contient une erreur" : "est correct") + ", et \\(x = " + fmtD(w) + "\\) " + u5bSolWord(solFlag) + "."; }
+  function optTextD(err, solFlag) { return "Le travail montré " + (err ? (hasErr ? "contient une erreur" : "a une erreur") : (hasErr ? "est tout à fait exact" : "est correct")) + ", et \\(x = " + fmtD(w) + "\\) " + (solFlag ? (isSol ? "est une solution" : "est une vraie solution") : (isSol ? "n'en est pas une" : "n'est pas une solution")) + "."; }
   var corr = optText(hasErr, isSol);
   var combos = [[true, true], [true, false], [false, true], [false, false]].filter(function (pr) { return !(pr[0] === hasErr && pr[1] === isSol); });
   var ds = combos.map(function (pr) {
     var parts = [];
     if (pr[0] !== hasErr) parts.push(hasErr ? "le travail montré contient bien une erreur" : "le travail montré ne contient pas d'erreur");
     if (pr[1] !== isSol) parts.push("en fait \\(x = " + fmtD(w) + "\\) " + u5bSolWord(isSol));
-    return { t: optText(pr[0], pr[1]), fb: "Vérifie encore : " + parts.join(", et ") + "." };
+    return { t: optTextD(pr[0], pr[1]), fb: "Vérifie encore : " + parts.join(", et ") + "." };
   });
   var errNote = flaw === "arith" ? "La valeur " + fmtD(shownL) + " de l'élève est fausse ; le bon côté gauche est " + fmtD(trueL) + ". " : flaw === "verdict" ? "Le côté gauche de l'élève est bon, mais le verdict est faux. " : "Le travail de l'élève correspond à ceci. ";
   var sol = "Refais la substitution et compare les deux côtés : \\[ \\begin{aligned} " + u5lin(a, b) + " &= " + sub + " \\\\ &= " + fmtD(trueL) + " \\end{aligned} \\] Puisque \\(" + fmtD(trueL) + " " + u5sym(r) + " " + fmtD(C) + "\\) est " + (isSol ? "vrai" : "faux") + ", \\(x = " + fmtD(w) + "\\) " + u5bSolWord(isSol) + ". " + errNote + "Donc l'énoncé correct est <b>" + corr + "</b>";
@@ -3954,7 +3975,7 @@ E("u5-count-satisfying", 5, ["8.3"], 2, "gen", function () {
     if (cnt < 1 || cnt > n - 1) continue;
     var lhs = form === 0 ? "x" : "x+" + fmtD(b);
     var listStr = vals.map(fmtD).join(", ");
-    var lines = vals.map(function (v, i) { return fmtD(tests[i]) + " &" + u5sym(r) + " " + fmtD(k) + " \\quad \\text{" + (u5holds(tests[i], r, k) ? "true" : "false") + "}"; }).join(" \\\\ ");
+    var lines = vals.map(function (v, i) { return fmtD(tests[i]) + " &" + u5sym(r) + " " + fmtD(k) + " \\quad \\text{" + (u5holds(tests[i], r, k) ? "vrai" : "faux") + "}"; }).join(" \\\\ ");
     var sol = "Substitue chaque valeur listée" + (form === 1 ? " dans \\(x + " + fmtD(b) + "\\), ce qui donne " + tests.map(fmtD).join(", ") + " dans l'ordre," : "") + " et vérifie chaque résultat contre " + fmtD(k) + " : \\[ \\begin{aligned} " + lines + " \\end{aligned} \\] Compter les énoncés vrais donne <b>" + fmtD(cnt) + "</b> des valeurs listées qui satisfont l'inéquation.";
     return numq("Combien des valeurs " + listStr + " satisfont l'inéquation \\(" + lhs + " " + u5sym(r) + " " + fmtD(k) + "\\) ?", cnt, 0.01, sol, { mode: form === 0 ? "count-x" : "count-x+b", r: r, k: k, b: b, n: n });
   }
@@ -4149,7 +4170,7 @@ E("u6-equation-context", 6, ["7.3"], 2, "var", varset([
       { t: "Une plante mesure 2 cm à la première mesure, puis grandit de 3 cm chaque semaine. y est sa hauteur en centimètres après x semaines.", fb: "Exact. La valeur de départ est 2 et le pas est 3 chaque semaine." },
       [
         { t: "Une plante mesure 3 cm à la première mesure, puis grandit de 2 cm chaque semaine. y est sa hauteur en centimètres après x semaines.", fb: "Cette situation donne y = 2x + 3 : le départ et le pas sont échangés." },
-        { t: "Un réservoir plein contient 2 L d'eau et se vide de 3 L chaque heure. y est l'eau qui reste après x heures.", fb: "Se vider fait diminuer y, mais dans l'équation, y augmente de 3 à chaque pas." },
+        { t: "Un réservoir plein contient 2 L d'eau et se vide de 3 L chaque heure. y est l'eau qui reste dans le réservoir après x heures.", fb: "Se vider fait diminuer y, mais dans l'équation, y augmente de 3 à chaque pas." },
         { t: "Un magasin vend des cahiers à 3 $ chacun et des stylos à 2 $ chacun. y est le coût de x cahiers et de x stylos.", fb: "Ce coût est 3x + 2x, c'est-à-dire 5x, sans valeur de départ ajoutée une fois." }
       ],
       "Dans \\(y = 3x + 2\\), la valeur de départ est 2 et le pas est +3 pour chaque augmentation de 1 de \\(x\\) : \\[ \\begin{aligned} y &= 2 + 3x \\end{aligned} \\] Donc la situation qui correspond est <b>la plante qui commence à 2 cm et grandit de 3 cm chaque semaine</b>.",
@@ -4160,7 +4181,7 @@ E("u6-equation-context", 6, ["7.3"], 2, "var", varset([
       { t: "Un messager demande des frais de ramassage de 10 $, plus 5 $ pour chaque kilomètre. y est le montant total en dollars pour x kilomètres.", fb: "Exact. La valeur de départ est 10 et le pas est 5 par kilomètre." },
       [
         { t: "Un messager demande des frais de ramassage de 5 $, plus 10 $ pour chaque kilomètre. y est le montant total en dollars pour x kilomètres.", fb: "Cette situation donne y = 10x + 5 : les frais et le taux sont échangés." },
-        { t: "Un pot d'épargne contient 10 $ et on retire 5 $ chaque semaine. y est l'argent qui reste après x semaines.", fb: "Retirer de l'argent fait diminuer y, mais dans l'équation, y augmente de 5 à chaque pas." },
+        { t: "Un pot d'épargne contient 10 $ et on retire 5 $ chaque semaine. y est l'argent qui reste dans le pot après x semaines.", fb: "Retirer de l'argent fait diminuer y, mais dans l'équation, y augmente de 5 à chaque pas." },
         { t: "Un magasin vend des chandails à 5 $ chacun et des chapeaux à 10 $ chacun. y est le coût de x chandails et de x chapeaux.", fb: "Ce coût est 5x + 10x, c'est-à-dire 15x, sans frais ajoutés une fois." }
       ],
       "Dans \\(y = 5x + 10\\), la valeur de départ est 10 et le pas est +5 pour chaque augmentation de 1 de \\(x\\) : \\[ \\begin{aligned} y &= 10 + 5x \\end{aligned} \\] Donc la situation qui correspond est <b>le messager avec des frais de 10 $ et 5 $ par kilomètre</b>.",
@@ -4172,7 +4193,7 @@ E("u6-equation-context", 6, ["7.3"], 2, "var", varset([
       [
         { t: "Un pot commence avec 2 $ dedans, et on ajoute 7 $ chaque semaine. y est le montant dans le pot après x semaines.", fb: "Cette situation donne y = 7x + 2 : le départ et le pas sont échangés." },
         { t: "Une corde de 7 m est coupée en morceaux de 2 m chacun. y est le nombre de morceaux coupés dans x cordes.", fb: "Ce nombre dépend d'une division, et il n'a pas de valeur de départ de 7 ajoutée une fois." },
-        { t: "Une classe achète 2 marqueurs pour chacun de x élèves et 7 marqueurs pour chacun de x enseignants. y est le nombre total de marqueurs.", fb: "Ce total est 2x + 7x, c'est-à-dire 9x, sans valeur de départ ajoutée une fois." }
+        { t: "Une classe achète 2 marqueurs pour chacun de x élèves et 7 pour chacun de x enseignants. y est le total de marqueurs.", fb: "Ce total est 2x + 7x, c'est-à-dire 9x, sans valeur de départ ajoutée une fois." }
       ],
       "Dans \\(y = 2x + 7\\), la valeur de départ est 7 et le pas est +2 pour chaque augmentation de 1 de \\(x\\) : \\[ \\begin{aligned} y &= 7 + 2x \\end{aligned} \\] Donc la situation qui correspond est <b>le pot qui commence avec 7 $ et gagne 2 $ chaque semaine</b>.",
       { mode: "eq-context-jar" });
@@ -4182,8 +4203,8 @@ E("u6-equation-context", 6, ["7.3"], 2, "var", varset([
       { t: "Un réservoir contient 1 L d'eau et se remplit à 4 L par minute. y est la quantité d'eau après x minutes.", fb: "Exact. La valeur de départ est 1 et le pas est 4 chaque minute." },
       [
         { t: "Un réservoir contient 4 L d'eau et se remplit à 1 L par minute. y est la quantité d'eau après x minutes.", fb: "Cette situation donne y = x + 4 : le départ et le pas sont échangés." },
-        { t: "Un gâteau est partagé également entre 4 amis, et 1 part supplémentaire est gardée. y est la taille de chaque part quand le gâteau a x parts.", fb: "Partager, c'est diviser, et les parts deviennent plus petites quand x augmente, contrairement à cette équation." },
-        { t: "Un gymnase vend 4 laissez-passer le matin et 1 laissez-passer chaque heure après cela. y est le nombre de laissez-passer vendus après x heures, en comptant le matin comme la première heure.", fb: "Cette formulation fait du 4 un montant unique pour le matin, ce qui échange les rôles de 4 et de 1." }
+        { t: "Un gâteau est partagé également entre 4 amis, et 1 part est gardée. y est la taille de chaque part.", fb: "Partager, c'est diviser, et les parts deviennent plus petites quand x augmente, contrairement à cette équation." },
+        { t: "Un gymnase vend 4 laissez-passer le matin et 1 par heure après cela. y est le nombre vendu après x heures.", fb: "Cette formulation fait du 4 un montant unique pour le matin, ce qui échange les rôles de 4 et de 1." }
       ],
       "Dans \\(y = 4x + 1\\), la valeur de départ est 1 et le pas est +4 pour chaque augmentation de 1 de \\(x\\) : \\[ \\begin{aligned} y &= 1 + 4x \\end{aligned} \\] Donc la situation qui correspond est <b>le réservoir qui commence avec 1 L et se remplit à 4 L par minute</b>.",
       { mode: "eq-context-tank" });
@@ -4193,8 +4214,8 @@ E("u6-equation-context", 6, ["7.3"], 2, "var", varset([
       { t: "Un autobus a 3 passagers à son premier arrêt, et 6 passagers de plus montent à chaque arrêt après cela. y est le nombre de passagers après x arrêts.", fb: "Exact. La valeur de départ est 3 et le pas est 6 à chaque arrêt." },
       [
         { t: "Un autobus a 6 passagers à son premier arrêt, et 3 passagers de plus montent à chaque arrêt après cela. y est le nombre de passagers après x arrêts.", fb: "Cette situation donne y = 3x + 6 : le départ et le pas sont échangés." },
-        { t: "Un boulanger met 6 petits pains dans chaque boîte et garde 3 boîtes de côté. y est le nombre de petits pains dans x boîtes.", fb: "Ce nombre est 6x avec 3 boîtes, et non 3 petits pains, gardés de côté ; l'équation ajoute 3 une fois à y." },
-        { t: "Une équipe marque 6 points pour chacun de x matchs et 3 points pour chacune de x pratiques. y est le total de points.", fb: "Ce total est 6x + 3x, c'est-à-dire 9x, sans valeur de départ ajoutée une fois." }
+        { t: "Un boulanger met 6 petits pains dans chaque boîte et garde 3 boîtes de côté. y est le nombre de petits pains dans x boîtes au total.", fb: "Ce nombre est 6x avec 3 boîtes, et non 3 petits pains, gardés de côté ; l'équation ajoute 3 une fois à y." },
+        { t: "Une équipe marque 6 points pour chacun de x matchs et 3 points pour chacune de x pratiques. y est le total de points marqués.", fb: "Ce total est 6x + 3x, c'est-à-dire 9x, sans valeur de départ ajoutée une fois." }
       ],
       "Dans \\(y = 6x + 3\\), la valeur de départ est 3 et le pas est +6 pour chaque augmentation de 1 de \\(x\\) : \\[ \\begin{aligned} y &= 3 + 6x \\end{aligned} \\] Donc la situation qui correspond est <b>l'autobus qui commence avec 3 passagers et en gagne 6 à chaque arrêt</b>.",
       { mode: "eq-context-bus" });
@@ -4587,7 +4608,7 @@ E("u7-scale-media-var", 7, ["10.8"], 1, "var", varset([
       [
         { t: "Chaque 5 cm sur la carte représente 1 km sur le terrain.", fb: "Cela échange les deux nombres de l'échelle." },
         { t: "Chaque 1 cm sur le terrain représente 5 km sur la carte.", fb: "Cela inverse la carte et le terrain." },
-        { t: "La carte est 5 fois plus grande que le parc.", fb: "Une carte est une réduction, donc elle est plus petite que le parc réel." }
+        { t: "La carte elle-même est 5 fois plus grande que le parc entier.", fb: "Une carte est une réduction, donc elle est plus petite que le parc réel." }
       ],
       "Dans une échelle, la longueur sur la carte vient en premier : 1 cm sur la carte correspond à 5 km dans la vie réelle. Donc l'échelle signifie <b>chaque 1 cm sur la carte représente 5 km sur le terrain</b>.",
       { mode: "scale-map" });
@@ -4596,9 +4617,9 @@ E("u7-scale-media-var", 7, ["10.8"], 1, "var", varset([
     return mcq("Une photo est agrandie avec un facteur d'échelle de 2. Un facteur d'échelle compare la longueur de l'image à la longueur d'origine. Que signifie un facteur d'échelle de 2 pour la photo ?",
       { t: "Chaque longueur dans l'agrandissement vaut 2 fois la longueur correspondante dans la photo.", fb: "Exact. Un facteur d'échelle de 2 double chaque longueur correspondante." },
       [
-        { t: "Chaque longueur dans l'agrandissement mesure 2 cm de plus que dans la photo.", fb: "Un facteur d'échelle multiplie les longueurs ; il n'ajoute pas de centimètres." },
+        { t: "Chaque longueur dans l'agrandissement mesure 2 cm de plus que dans la photo d'origine.", fb: "Un facteur d'échelle multiplie les longueurs ; il n'ajoute pas de centimètres." },
         { t: "Chaque longueur dans l'agrandissement vaut la moitié de la longueur correspondante dans la photo.", fb: "La moitié serait un facteur d'échelle de 0,5, pas 2." },
-        { t: "Seul le côté le plus long de la photo est doublé.", fb: "Un facteur d'échelle s'applique à chaque longueur, pas seulement à un côté." }
+        { t: "Seul le côté le plus long de la photo est doublé, et les autres côtés restent pareils.", fb: "Un facteur d'échelle s'applique à chaque longueur, pas seulement à un côté." }
       ],
       "Le facteur d'échelle multiplie chaque longueur : \\[ \\begin{aligned} \\text{longueur de l'image} &= 2 \\times \\text{longueur d'origine} \\end{aligned} \\] Donc <b>chaque longueur dans l'agrandissement vaut 2 fois la longueur correspondante dans la photo</b>.",
       { mode: "scale-photo" });
@@ -4609,7 +4630,7 @@ E("u7-scale-media-var", 7, ["10.8"], 1, "var", varset([
       [
         { t: "Chaque 1 cm sur le plan représente 2 m dans la salle de classe réelle.", fb: "Cela échange les deux nombres de l'échelle." },
         { t: "La salle de classe réelle mesure 2 cm pour chaque mètre sur le plan.", fb: "Cela confond la longueur qui appartient au dessin." },
-        { t: "Le plan est plus grand que la salle de classe réelle.", fb: "Un plan est une réduction, donc il est plus petit que la salle." }
+        { t: "Le plan dessiné est plus grand que la salle de classe réelle elle-même.", fb: "Un plan est une réduction, donc il est plus petit que la salle." }
       ],
       "Le premier nombre appartient au dessin et le deuxième à la salle réelle. Donc l'échelle signifie <b>chaque 2 cm sur le plan représente 1 m dans la salle de classe réelle</b>.",
       { mode: "scale-blueprint" });
@@ -4629,9 +4650,9 @@ E("u7-scale-media-var", 7, ["10.8"], 1, "var", varset([
     return mcq("Une affiche est imprimée à partir d'un petit dessin avec un facteur d'échelle de 0,5. Que signifie un facteur d'échelle de 0,5 pour l'affiche ?",
       { t: "Chaque longueur sur l'affiche vaut la moitié de la longueur correspondante sur le dessin.", fb: "Exact. Un facteur d'échelle inférieur à 1 donne une réduction." },
       [
-        { t: "Chaque longueur sur l'affiche mesure 0,5 cm de plus que sur le dessin.", fb: "Un facteur d'échelle multiplie les longueurs ; il n'ajoute pas de centimètres." },
-        { t: "Chaque longueur sur l'affiche vaut deux fois la longueur correspondante sur le dessin.", fb: "Deux fois serait un facteur d'échelle de 2, pas 0,5." },
-        { t: "L'affiche a la moitié des côtés du dessin.", fb: "Une réduction garde la même forme ; seules les longueurs changent." }
+        { t: "Chaque longueur sur l'affiche mesure 0,5 cm de plus que sur le dessin original montré.", fb: "Un facteur d'échelle multiplie les longueurs ; il n'ajoute pas de centimètres." },
+        { t: "Chaque longueur sur l'affiche vaut deux fois la longueur correspondante sur le dessin complet.", fb: "Deux fois serait un facteur d'échelle de 2, pas 0,5." },
+        { t: "L'affiche a la moitié des côtés du dessin, avec les mêmes angles partout que l'original.", fb: "Une réduction garde la même forme ; seules les longueurs changent." }
       ],
       "La longueur de l'image est la longueur d'origine multipliée par le facteur d'échelle : \\[ \\begin{aligned} \\text{longueur de l'image} &= 0,5 \\times \\text{longueur d'origine} \\end{aligned} \\] Donc <b>chaque longueur sur l'affiche vaut la moitié de la longueur correspondante sur le dessin</b>.",
       { mode: "scale-poster" });
@@ -4641,8 +4662,8 @@ E("u7-scale-media-var", 7, ["10.8"], 1, "var", varset([
       { t: "Une distance de 1 unité sur la carte représente 50 000 unités dans la vie réelle.", fb: "Exact. Les deux nombres utilisent la même unité, et la distance réelle est beaucoup plus grande." },
       [
         { t: "Une distance de 50 000 unités sur la carte représente 1 unité dans la vie réelle.", fb: "Cela échange les deux nombres de l'échelle." },
-        { t: "La carte est 50 000 fois plus grande que la ville.", fb: "Une carte est une réduction, donc elle est beaucoup plus petite que la ville." },
-        { t: "Chaque distance réelle mesure 50 000 cm.", fb: "L'échelle donne un rapport, pas une seule distance réelle fixe." }
+        { t: "La carte elle-même est 50 000 fois plus grande que toute la ville.", fb: "Une carte est une réduction, donc elle est beaucoup plus petite que la ville." },
+        { t: "Chaque distance réelle dans la ville mesure exactement 50 000 cm.", fb: "L'échelle donne un rapport, pas une seule distance réelle fixe." }
       ],
       "Lis le rapport dans l'ordre, la carte en premier et la vie réelle en deuxième. Donc l'échelle signifie <b>une distance de 1 unité sur la carte représente 50 000 unités dans la vie réelle</b>.",
       { mode: "scale-web-map" });
@@ -4734,9 +4755,9 @@ E("u7-proportional-check", 7, ["10.18"], 2, "gen", function () {
       q = mcq(prompt,
         { t: "Il n'est pas proportionnel, car les rapports de côtés ne correspondent pas.", fb: "Exact. Les deux rapports sont " + fmtD(r1) + " et " + fmtD(r2) + ", qui diffèrent." },
         [
-          { t: "Il est proportionnel à l'original, avec un facteur d'échelle de " + fmtD(r1) + ".", fb: "Cela utilise seulement la première paire de côtés ; la deuxième paire donne un rapport différent." },
-          { t: "Il est proportionnel à l'original, avec un facteur d'échelle de " + fmtD(r2) + ".", fb: "Cela utilise seulement la deuxième paire de côtés ; la première paire donne un rapport différent." },
-          { t: "Il n'est pas proportionnel, car les angles sont différents.", fb: "Les deux figures sont des rectangles, donc tous les angles mesurent 90 degrés ; le problème vient des rapports de côtés." }
+          { t: "Il est proportionnel à l'original, avec un facteur d'échelle de " + fmtD(r1) + ", calculé à partir d'un seul côté.", fb: "Cela utilise seulement la première paire de côtés ; la deuxième paire donne un rapport différent." },
+          { t: "Il est proportionnel à l'original, avec un facteur d'échelle de " + fmtD(r2) + ", calculé à partir d'un seul côté.", fb: "Cela utilise seulement la deuxième paire de côtés ; la première paire donne un rapport différent." },
+          { t: "Il n'est pas proportionnel, car les angles correspondants sont différents.", fb: "Les deux figures sont des rectangles, donc tous les angles mesurent 90 degrés ; le problème vient des rapports de côtés." }
         ], sol, { mode: "prop-no", w: w, h: h, k: k, iw: iw, ih: ih });
     }
     q.figure = fig;
@@ -5313,9 +5334,9 @@ E("u7-both-symmetry-var", 7, ["10.11"], 2, "var", varset([
     return mcq("Quelle oeuvre présente à la fois la symétrie linéaire et la symétrie de rotation ?",
       { t: "Un flocon de neige en papier avec 6 pointes correspondantes, découpé dans du papier plié", fb: "Exact. Il se plie le long d'axes qui passent par son centre et correspond lors de sixièmes de tour." },
       [
-        { t: "Une spirale peinte sur une assiette", fb: "Une spirale s'enroule dans un seul sens, donc elle n'a ni axe de pliage ni tour partiel correspondant." },
-        { t: "Un cerf-volant avec une longue queue, dessiné de côté", fb: "La forme du cerf-volant a un axe de pliage le long de sa ligne centrale, mais aucun tour partiel ne la fait correspondre." },
-        { t: "Un bloc de courtepointe en moulinet avec quatre pales courbées", fb: "Le moulinet a une symétrie de rotation seulement; ses pales courbées ne lui donnent aucun axe de pliage." }
+        { t: "Une spirale peinte en rouge sur une grande assiette ronde en céramique", fb: "Une spirale s'enroule dans un seul sens, donc elle n'a ni axe de pliage ni tour partiel correspondant." },
+        { t: "Un cerf-volant avec une longue queue et des rubans, dessiné de côté dans le ciel", fb: "La forme du cerf-volant a un axe de pliage le long de sa ligne centrale, mais aucun tour partiel ne la fait correspondre." },
+        { t: "Un bloc de courtepointe en moulinet avec quatre pales courbées, cousu dans un tissu à motifs", fb: "Le moulinet a une symétrie de rotation seulement; ses pales courbées ne lui donnent aucun axe de pliage." }
       ],
       "Seul le flocon réussit les deux tests : des pliages qui passent par le centre et des tours partiels correspondants. Donc l'oeuvre qui a les deux est <b>un flocon de neige en papier avec 6 pointes correspondantes, découpé dans du papier plié</b>.",
       { mode: "both-snowflake" });
@@ -5325,8 +5346,8 @@ E("u7-both-symmetry-var", 7, ["10.11"], 2, "var", varset([
       { t: "Il a une symétrie linéaire, et une symétrie de rotation d'ordre 2 avec un angle de 180°", fb: "Exact. Deux correspondances en un tour complet donnent un ordre de 2, et 360 divisé par 2 donne 180." },
       [
         { t: "Il a une symétrie linéaire, et une symétrie de rotation d'ordre 4 avec un angle de 90°", fb: "Il faudrait quatre correspondances pour un ordre de 4; ce motif correspond deux fois." },
-        { t: "Il a une symétrie linéaire seulement", fb: "Correspondre deux fois en un tour complet est une symétrie de rotation, donc il a aussi celle-là." },
-        { t: "Il a une symétrie de rotation d'ordre 2 avec un angle de 180° seulement", fb: "Se plier sur lui-même le long de 2 axes est une symétrie linéaire, donc il a aussi celle-là." }
+        { t: "Il a une symétrie linéaire seulement, sans aucune symétrie de rotation", fb: "Correspondre deux fois en un tour complet est une symétrie de rotation, donc il a aussi celle-là." },
+        { t: "Il a une symétrie de rotation d'ordre 2 avec un angle de 180° seulement, et rien de plus", fb: "Se plier sur lui-même le long de 2 axes est une symétrie linéaire, donc il a aussi celle-là." }
       ],
       "Le pliage donne la symétrie linéaire, et le nombre de tours donne l'ordre : \\[ \\begin{aligned} 360° \\div 2 &= 180° \\end{aligned} \\] Donc l'énoncé est <b>il a une symétrie linéaire, et une symétrie de rotation d'ordre 2 avec un angle de 180°</b>.",
       { mode: "both-features" });
@@ -5668,7 +5689,7 @@ E("u8-chord-perp-bisects", 8, ["9.6"], 2, "gen", function () {
     { t: "\\(AM = MB\\)", fb: "Exact. La perpendiculaire qui va du centre coupe la corde en deux parties égales, donc M est son milieu." },
     [
       { t: "M est le centre du cercle.", fb: "Le centre est O. M est un point sur la corde AB." },
-      { t: "\\(OM\\) est plus long que le rayon \\(OA\\).", fb: "M est à l'intérieur du cercle, donc OM est plus court que le rayon OA." },
+      { t: "\\(OM = OA\\)", fb: "M est à l'intérieur du cercle, donc OM est plus court que le rayon OA, et non égal à lui." },
       { t: "AB passe par le centre O.", fb: "La corde AB est loin de O ; seul un diamètre passe par le centre." }
     ],
     solution, { mode: "chord-perp-bisects", phi: phi, r: r, tilt: tilt });
@@ -5863,7 +5884,7 @@ E("u9-prob-in-media", 9, ["12.1"], 1, "var", varset([
   function(){
     return mcq("Quatre courts textes paraissent dans un bulletin scolaire. Lequel utilise la probabilité ?",
       {t:"Il y a 70 % de chances de neige pour la fête de patinage extérieur vendredi", fb:"Exact : un pourcentage de chances dit à quel point la neige est probable. C'est la probabilité en usage."},
-      [{t:"La fête de patinage commencera à midi vendredi dans le hall du gymnase de l'école", fb:"Ce texte donne une heure et un lieu, sans rien dire sur la probabilité d'un événement."},
+      [{t:"La fête de patinage commencera à midi vendredi au gymnase", fb:"Ce texte donne une heure et un lieu, sans rien dire sur la probabilité d'un événement."},
        {t:"L'hiver dernier, l'école a tenu trois fêtes de patinage pour les élèves et le personnel", fb:"Ce texte rapporte un nombre passé, sans énoncé sur le hasard."},
        {t:"Les élèves ont voté le patinage comme leur activité d'hiver préférée cette année scolaire", fb:"Ce texte rapporte un résultat de vote, sans rien dire sur la probabilité d'un événement."}],
       "On utilise la probabilité quand un énoncé dit à quel point un événement est probable. Le texte qui utilise la probabilité est <b>les 70 % de chances de neige pour la fête de patinage</b>.",
@@ -5874,7 +5895,7 @@ E("u9-prob-in-media", 9, ["12.1"], 1, "var", varset([
       {t:"Les prévisionnistes donnent à l'équipe locale 3 chances sur 5 de gagner samedi", fb:"Exact : 3 chances sur 5 disent à quel point une victoire est probable. C'est la probabilité en usage."},
       [{t:"L'équipe locale a marqué deux buts tardifs pour gagner le match samedi", fb:"Ce texte rapporte ce qui s'est déjà passé, sans énoncé sur le hasard."},
        {t:"Les billets pour le match de samedi coûtent huit dollars à la porte", fb:"Ce texte donne un prix, sans rien dire sur la probabilité d'un événement."},
-       {t:"L'équipe s'entraînera mardi et jeudi soir cette semaine", fb:"Ce texte donne un horaire, sans rien dire sur la probabilité d'un événement."}],
+       {t:"L'équipe s'entraînera mardi et jeudi soir cette semaine sur le terrain de l'école", fb:"Ce texte donne un horaire, sans rien dire sur la probabilité d'un événement."}],
       "On utilise la probabilité quand un énoncé dit à quel point un événement est probable. Le texte qui utilise la probabilité est <b>les 3 chances sur 5 de gagner samedi</b>.",
       {mode:"media-sports"});
   },
@@ -5900,7 +5921,7 @@ E("u9-prob-in-media", 9, ["12.1"], 1, "var", varset([
     return mcq("Quatre courts textes paraissent sur des affiches à une foire scolaire. Lequel utilise la probabilité ?",
       {t:"Une affiche de jeu dit que les joueurs ont 1 chance sur 6 de gagner un prix", fb:"Exact : 1 chance sur 6 dit à quel point gagner est probable. C'est la probabilité en usage."},
       [{t:"Le jeu de lancer d'anneaux coûte deux dollars pour trois essais à la foire", fb:"Cette affiche donne un prix, sans rien dire sur la probabilité d'un événement."},
-       {t:"Les prix des jeux sont gardés sur l'étagère du haut du kiosque", fb:"Cette affiche donne un lieu, sans énoncé sur le hasard."},
+       {t:"Les prix des jeux sont gardés sur l'étagère du haut du kiosque de jeux de la foire", fb:"Cette affiche donne un lieu, sans énoncé sur le hasard."},
        {t:"La foire scolaire ouvre à six heures le soir et ferme à neuf heures", fb:"Cette affiche donne les heures d'ouverture, sans rien dire sur la probabilité d'un événement."}],
       "On utilise la probabilité quand un énoncé dit à quel point un événement est probable. Le texte qui utilise la probabilité est <b>1 chance sur 6 de gagner un prix</b>.",
       {mode:"media-fair"});
@@ -5920,9 +5941,9 @@ E("u9-assumption-limit", 9, ["12.2"], 2, "var", varset([
   function(){
     return mcq("Un élève dit que la probabilité d'obtenir face au lancer d'une pièce est \\(\\frac{1}{2}\\). Quelle option énonce l'hypothèse derrière cette probabilité et sa limite ?",
       {t:"Elle suppose que la pièce et le lancer sont équitables ; elle échoue si la pièce est pliée ou lancée de façon inégale", fb:"Exact : des chances égales demandent une pièce équitable, et un dommage ou un lancer inégal brise cette hypothèse."},
-      [{t:"Elle suppose que face est sorti la moitié du temps la semaine dernière ; elle échoue si la pièce est lancée seulement quelques fois", fb:"Les résultats de la semaine dernière décrivent la probabilité expérimentale, mais la valeur énoncée vient de résultats égaux."},
-       {t:"Elle suppose que l'élève veut obtenir face ; elle échoue si l'élève espère pile plutôt", fb:"Vouloir un résultat est un sentiment personnel, mais la valeur énoncée vient des deux côtés égaux."},
-       {t:"Elle suppose que la pièce est tombée sur face de nombreuses fois ; elle échoue si la pièce est équitable et tombe de façon égale", fb:"Une pièce équitable appuie la valeur plutôt qu'elle ne la limite, et les lancers passés ne sont pas l'hypothèse."}],
+      [{t:"Elle suppose que face est sorti la moitié du temps avant ; elle échoue si la pièce est lancée seulement peu de fois de suite", fb:"Les résultats de la semaine dernière décrivent la probabilité expérimentale, mais la valeur énoncée vient de résultats égaux."},
+       {t:"Elle suppose que l'élève veut obtenir face ; elle échoue si l'élève espère pile plutôt que face", fb:"Vouloir un résultat est un sentiment personnel, mais la valeur énoncée vient des deux côtés égaux."},
+       {t:"Elle suppose que la pièce est tombée sur face souvent ; elle échoue si elle tombe de façon égale", fb:"Une pièce équitable appuie la valeur plutôt qu'elle ne la limite, et les lancers passés ne sont pas l'hypothèse."}],
       "La valeur \\(\\frac{1}{2}\\) repose sur des résultats également probables, donc elle suppose une pièce équitable et un lancer équitable. L'énoncé exact est <b>elle suppose que la pièce et le lancer sont équitables ; elle échoue si la pièce est pliée ou lancée de façon inégale</b>.",
       {mode:"assume-coin"});
   },
@@ -5965,7 +5986,7 @@ E("u9-assumption-limit", 9, ["12.2"], 2, "var", varset([
   function(){
     return mcq("Un enseignant dit que la probabilité de piger une bille rouge dans un sac avec 3 billes rouges et 3 billes bleues est \\(\\frac{1}{2}\\). Quelle option énonce l'hypothèse derrière cette probabilité et sa limite ?",
       {t:"Elle suppose que les billes se ressemblent au toucher et sont bien mélangées ; elle échoue si les tailles diffèrent ou si le mélange est mauvais", fb:"Exact : une pige à l'aveugle est égale seulement quand on ne peut pas distinguer les billes et qu'elles sont bien mélangées."},
-      [{t:"Elle suppose qu'une bille rouge a été pigée la moitié du temps avant ; elle échoue si le sac contient des couleurs égales", fb:"Les piges précédentes décrivent des résultats expérimentaux, et des couleurs égales appuient le comptage énoncé."},
+      [{t:"Elle suppose qu'une bille rouge a été pigée la moitié du temps avant ; elle échoue si le sac contient des couleurs en nombres tout à fait égaux partout dans le sac", fb:"Les piges précédentes décrivent des résultats expérimentaux, et des couleurs égales appuient le comptage énoncé."},
        {t:"Elle suppose que l'élève espère piger une bille rouge ; elle échoue si l'élève espère une bleue plutôt", fb:"Espérer est un sentiment personnel, mais la valeur énoncée vient des nombres égaux de couleurs."},
        {t:"Elle suppose que le sac est placé sur le bureau de l'enseignant ; elle échoue si le sac est placé sur une étagère", fb:"L'endroit où le sac se trouve ne fixe pas la valeur ; des billes égales et bien mélangées sont ce qui compte."}],
       "La valeur \\(\\frac{1}{2}\\) repose sur une pige à l'aveugle dans des nombres égaux de billes semblables et bien mélangées. L'énoncé exact est <b>elle suppose que les billes se ressemblent au toucher et sont bien mélangées ; elle échoue si les tailles diffèrent ou si le mélange est mauvais</b>.",
@@ -5978,8 +5999,8 @@ E("u9-same-number-two-sides", 9, ["12.3"], 2, "var", varset([
     return mcq("Une clinique rapporte qu'un traitement a aidé 7 patients sur 10. Les partisans disent que la plupart des patients se sont améliorés. Comment les personnes qui s'opposent au traitement pourraient-elles utiliser le même résultat pour défendre leur côté ?",
       {t:"Elles peuvent dire qu'il n'a pas aidé 3 patients sur 10, donc presque un tiers n'a vu aucun bienfait", fb:"Exact : le même résultat laisse 3 patients sur 10 sans aide, et ce nombre appuie l'autre côté."},
       [{t:"Elles peuvent dire qu'il a aidé seulement 7 patients sur 20, donc moins de la moitié des patients se sont améliorés", fb:"Cela change le total de 10 à 20, ce qui invente un nouveau résultat au lieu de réutiliser le même."},
-       {t:"Elles peuvent dire qu'il a aidé 10 patients sur 7, donc le rapport a dû mal compter", fb:"Un compte de 10 sur 7 est impossible, et il ne reformule pas du tout le résultat rapporté."},
-       {t:"Elles peuvent dire que les patients n'aimaient pas la salle d'attente de la clinique, donc le traitement devrait être arrêté", fb:"Les opinions sur la salle d'attente sont un autre sujet ; le cas opposé doit réutiliser le même 7 sur 10."}],
+       {t:"Elles peuvent dire qu'il a aidé 10 patients sur 7, donc le rapport a dû mal compter les patients", fb:"Un compte de 10 sur 7 est impossible, et il ne reformule pas du tout le résultat rapporté."},
+       {t:"Elles peuvent dire que les patients n'aimaient pas la salle d'attente, donc le traitement devrait être arrêté", fb:"Les opinions sur la salle d'attente sont un autre sujet ; le cas opposé doit réutiliser le même 7 sur 10."}],
       "Une probabilité ou un taux peut appuyer des positions opposées en insistant sur le résultat opposé : 7 sur 10 aidés veut aussi dire 3 sur 10 non aidés. L'usage opposé est <b>il n'a pas aidé 3 patients sur 10</b>.",
       {mode:"twosides-treatment"});
   },
@@ -6005,7 +6026,7 @@ E("u9-same-number-two-sides", 9, ["12.3"], 2, "var", varset([
     return mcq("Une équipe scolaire a gagné 6 de ses 10 matchs cette saison. Les partisans disent que l'équipe a eu une forte saison. Comment les critiques pourraient-ils utiliser le même résultat pour dire que la saison était faible ?",
       {t:"Ils peuvent dire que l'équipe n'a pas gagné 4 de ses 10 matchs, donc elle a perdu du terrain dans la plupart des matchs serrés", fb:"Exact : gagner 6 sur 10 veut aussi dire ne pas gagner 4 sur 10, et ce nombre appuie les critiques."},
       [{t:"Ils peuvent dire que l'équipe a gagné seulement 6 de ses 20 matchs, donc elle a gagné moins d'un tiers de ses matchs", fb:"Cela change le total de 10 à 20, ce qui invente un nouveau résultat au lieu de réutiliser le même."},
-       {t:"Ils peuvent dire que l'équipe s'est entraînée 10 fois par mois, donc les joueurs se sont entraînés trop peu", fb:"Les nombres d'entraînements sont un autre sujet ; le cas des critiques doit réutiliser le même résultat de 6 sur 10."},
+       {t:"Ils peuvent dire que l'équipe s'est entraînée 10 fois par mois, donc les joueurs se sont entraînés trop peu pendant la saison de jeu", fb:"Les nombres d'entraînements sont un autre sujet ; le cas des critiques doit réutiliser le même résultat de 6 sur 10."},
        {t:"Ils peuvent dire que l'équipe a gagné 10 de ses 6 matchs, donc le livre des records doit être faux", fb:"Un compte de 10 sur 6 est impossible, et il ne reformule pas du tout le résultat rapporté."}],
       "Un bilan peut appuyer des positions opposées en insistant sur le résultat opposé : gagner 6 sur 10 veut aussi dire ne pas gagner 4 sur 10. L'usage des critiques est <b>l'équipe n'a pas gagné 4 de ses 10 matchs</b>.",
       {mode:"twosides-team"});
@@ -6093,7 +6114,7 @@ E("u9-classify-probability", 9, ["12.4"], 1, "var", varset([
       {t:"Jugement subjectif, parce qu'il repose sur un sentiment personnel sans comptages ni essais", fb:"Exact : sans résultats comptés et sans essais faits, l'estimation repose sur le sentiment personnel seul."},
       [{t:"Probabilité théorique, parce qu'il repose sur un sentiment personnel sans comptages ni essais", fb:"La raison nomme un sentiment sans comptages, ce qui est subjectif ; la théorique demande des résultats égaux comptés."},
        {t:"Probabilité expérimentale, parce qu'il repose sur un sentiment personnel sans comptages ni essais", fb:"La raison nomme un sentiment sans essais, ce qui est subjectif ; l'expérimentale demande des résultats d'essais."},
-       {t:"Probabilité théorique, parce qu'il repose sur le comptage des noms également probables de la liste", fb:"L'enseignante n'a rien compté sur la liste ; elle a donné un sentiment avant même de rencontrer la classe."}],
+       {t:"Probabilité théorique, parce qu'il repose sur le comptage des noms de la liste", fb:"L'enseignante n'a rien compté sur la liste ; elle a donné un sentiment avant même de rencontrer la classe."}],
       "Une probabilité qui repose sur un sentiment personnel, sans comptages et sans essais, est un jugement subjectif. Le classement exact est <b>jugement subjectif, parce qu'il repose sur un sentiment personnel</b>.",
       {mode:"classify-teacher-feel"});
   },
@@ -6120,7 +6141,7 @@ E("u9-classify-probability", 9, ["12.4"], 1, "var", varset([
       {t:"Jugement subjectif, parce qu'il repose sur un sentiment personnel sans comptages ni essais", fb:"Exact : sans prévision comptée et sans registres vérifiés, l'estimation repose sur le sentiment personnel."},
       [{t:"Probabilité théorique, parce qu'il repose sur un sentiment personnel sans comptages ni essais", fb:"La raison nomme un sentiment sans comptages, ce qui est subjectif ; la théorique demande des résultats égaux comptés."},
        {t:"Probabilité expérimentale, parce qu'il repose sur un sentiment personnel sans comptages ni essais", fb:"La raison nomme un sentiment sans essais, ce qui est subjectif ; l'expérimentale demande des résultats d'essais."},
-       {t:"Probabilité expérimentale, parce qu'il repose sur les registres météo que le marin a gardés pendant des années", fb:"Le marin n'a vérifié aucun registre pour cet appel ; il a donné un sentiment en regardant le ciel."}],
+       {t:"Probabilité expérimentale, parce qu'il repose sur les registres météo du marin", fb:"Le marin n'a vérifié aucun registre pour cet appel ; il a donné un sentiment en regardant le ciel."}],
       "Une probabilité qui repose sur un sentiment personnel, sans comptages et sans essais, est un jugement subjectif. Le classement exact est <b>jugement subjectif, parce qu'il repose sur un sentiment personnel</b>.",
       {mode:"classify-sailor"});
   }
@@ -6162,17 +6183,17 @@ E("u9-collection-problem", 9, ["11.1"], 2, "var", varset([
   function(){
     return mcq("Un sondage de classe sur le revenu familial demande à chaque élève d'écrire son nom en haut, et l'enseignant lit les sondages remplis à voix haute pour les vérifier. Quel est le principal problème de cette collecte de données ?",
       {t:"Vie privée, parce que les noms lient des réponses sensibles sur le revenu à chaque élève de la classe", fb:"Exact : le revenu est sensible, et les noms plus la lecture à voix haute exposent des renseignements privés."},
-      [{t:"Coût, parce qu'imprimer une ligne pour le nom sur chaque sondage utilise plus d'encre et de papier", fb:"Le coût d'impression est minime ici; le problème est d'exposer des réponses sensibles liées à des noms."},
+      [{t:"Coût, parce qu'imprimer une ligne pour le nom sur chaque sondage utilise plus d'encre et de papier qu'avant", fb:"Le coût d'impression est minime ici; le problème est d'exposer des réponses sensibles liées à des noms."},
        {t:"Le langage, parce que la question sur le revenu était formulée pour pousser vers une réponse", fb:"Aucune formulation orientée n'est décrite ici; le problème est les noms liés à des réponses sensibles."},
-       {t:"Biais, parce que seuls les élèves présents ce jour-là pouvaient faire le sondage", fb:"La présence n'est pas le problème soulevé ici; le problème est des réponses privées liées aux noms des élèves."}],
+       {t:"Biais, parce que seuls les élèves présents ce jour-là pouvaient faire le sondage de la classe", fb:"La présence n'est pas le problème soulevé ici; le problème est des réponses privées liées aux noms des élèves."}],
       "Recueillir des réponses sensibles avec les noms, puis les lire à voix haute, est un problème de vie privée. Le principal problème est la <b>vie privée, parce que les noms lient des réponses sensibles sur le revenu à chaque élève</b>.",
       {mode:"problem-income"});
   },
   function(){
     return mcq("Un sondage de cafétéria sur les repas préférés liste seulement des aliments d'une seule tradition culturelle et demande à tous les élèves pourquoi ils ne mangent pas les aliments que leurs familles servent à la maison. Quel est le principal problème de cette collecte de données ?",
       {t:"Sensibilité culturelle, parce que le sondage traite une tradition comme la norme pour tout le monde", fb:"Exact : les choix et la question rejettent les traditions alimentaires de beaucoup de familles de l'école."},
-      [{t:"Le temps et le moment, parce que le sondage a été distribué juste avant la cloche du dîner", fb:"Le moment n'est jamais mentionné ici; le problème est de traiter une tradition alimentaire comme la norme."},
-       {t:"Coût, parce qu'imprimer une liste de menu plus longue pour le sondage coûterait trop cher", fb:"Le coût n'est jamais soulevé ici; le problème est un sondage bâti autour d'une seule tradition culturelle."},
+      [{t:"Le temps et le moment, parce que le sondage a été distribué juste avant la cloche du dîner de l'école", fb:"Le moment n'est jamais mentionné ici; le problème est de traiter une tradition alimentaire comme la norme."},
+       {t:"Coût, parce qu'imprimer une liste de menu plus longue pour le sondage coûterait trop cher à l'école", fb:"Le coût n'est jamais soulevé ici; le problème est un sondage bâti autour d'une seule tradition culturelle."},
        {t:"Éthique, parce que les élèves recevaient un dîner gratuit pour remplir le formulaire du sondage", fb:"Aucune promesse n'est mentionnée ici; le problème est le manque de respect envers les traditions des familles."}],
       "Un sondage qui traite une tradition culturelle comme la norme pour tout le monde montre un problème de sensibilité culturelle. Le principal problème est la <b>sensibilité culturelle, parce que le sondage traite une tradition comme la norme</b>.",
       {mode:"problem-cafeteria"});
@@ -6192,9 +6213,9 @@ E("u9-collection-biggest-threat", 9, ["11.1"], 3, "var", varset([
   function(){
     return mcq("Un sondage sur le site Web d'une ville au sujet d'une nouvelle piscine permet à n'importe qui de voter aussi souvent qu'il le veut, et il reste ouvert pendant une semaine. Des partisans partagent le lien partout dès le premier jour. Quel problème menace le plus la validité des résultats ?",
       {t:"Biais, parce que les votes répétés et les liens partagés laissent un groupe motivé inonder les résultats", fb:"Exact : des votes répétés sans limite brisent tout lien entre les résultats et la ville au complet."},
-      [{t:"Le temps et le moment, parce qu'une période d'une semaine peut manquer des résidents absents", fb:"Une courte période compte, mais le flot de votes répétés peut noyer le compte bien au-delà d'un écart de moment."},
-       {t:"Coût, parce que faire fonctionner un sondage Web pendant une semaine complète ajoute des frais", fb:"Le coût d'hébergement touche le budget, pas si les votes comptés reflètent toute la ville."},
-       {t:"Le langage, parce que la question du sondage est écrite en mots courts et simples", fb:"Une formulation simple est une force ici; la menace est qui peut voter et combien de fois."}],
+      [{t:"Le temps et le moment, parce qu'une période d'une semaine peut manquer des résidents absents cette semaine-là", fb:"Une courte période compte, mais le flot de votes répétés peut noyer le compte bien au-delà d'un écart de moment."},
+       {t:"Coût, parce que faire fonctionner un sondage Web pendant une semaine complète ajoute des frais de plus", fb:"Le coût d'hébergement touche le budget, pas si les votes comptés reflètent toute la ville."},
+       {t:"Le langage, parce que la question du sondage est écrite en mots courts et simples que tous comprennent", fb:"Une formulation simple est une force ici; la menace est qui peut voter et combien de fois."}],
       "Deux influences sont présentes, mais les votes répétés plus le partage du lien créent un biais qui peut dépasser tout autre souci, parce que les résultats cessent de représenter la ville. La plus grande menace est le <b>biais, parce que les votes répétés laissent un groupe motivé inonder les résultats</b>.",
       {mode:"threat-repeatpoll"});
   },
@@ -6210,8 +6231,8 @@ E("u9-collection-biggest-threat", 9, ["11.1"], 3, "var", varset([
   function(){
     return mcq("Un sondage sur la santé coûte cher à imprimer et à livrer, et les formulaires remplis, avec les noms des élèves à côté de réponses sensibles sur la santé, sont affichés sur un tableau de classe pour que la classe les lise. Quel problème menace le plus la validité des résultats ?",
       {t:"Vie privée, parce que les noms et les réponses sur la santé exposés empêcheront les élèves de répondre honnêtement", fb:"Exact : quand les réponses sont publiques, les élèves cachent la vérité, donc les données elles-mêmes deviennent peu fiables."},
-      [{t:"Coût, parce qu'imprimer et livrer le sondage utilise une grande part du budget", fb:"Un coût élevé limite le nombre de sondages, mais des réponses exposées corrompent les réponses déjà données."},
-       {t:"Biais, parce que seuls les élèves de cette classe ont reçu le sondage sur la santé", fb:"Une seule classe limite la portée, mais l'exposition publique change ce que les élèves osent écrire."},
+      [{t:"Coût, parce qu'imprimer et livrer le sondage utilise une grande part du budget prévu pour le projet de la classe au complet", fb:"Un coût élevé limite le nombre de sondages, mais des réponses exposées corrompent les réponses déjà données."},
+       {t:"Biais, parce que seuls les élèves de cette classe ont reçu le sondage sur la santé à l'école", fb:"Une seule classe limite la portée, mais l'exposition publique change ce que les élèves osent écrire."},
        {t:"Le temps et le moment, parce que le sondage est resté affiché pendant une semaine complète de classes", fb:"La durée d'affichage est un détail secondaire; la menace est des réponses sensibles liées à des noms, à la vue de tous."}],
       "Deux influences sont présentes, mais afficher des réponses nominatives sur la santé en public est un échec de vie privée qui change l'honnêteté des réponses, donc on ne peut pas se fier aux résultats. La plus grande menace est la <b>vie privée, parce que les noms et les réponses sur la santé exposés empêcheront des réponses honnêtes</b>.",
       {mode:"threat-board"});
@@ -6219,9 +6240,9 @@ E("u9-collection-biggest-threat", 9, ["11.1"], 3, "var", varset([
   function(){
     return mcq("Un sondage sur le dîner se déroule pendant une semaine d'examens chargée, et ses questions traitent une tradition alimentaire culturelle comme normale tout en décrivant les aliments d'autres familles comme des choix inhabituels. Beaucoup de familles sautent le sondage au complet. Quel problème menace le plus la validité des résultats ?",
       {t:"Sensibilité culturelle, parce que les familles offensées sautent le sondage, donc des groupes entiers manquent", fb:"Exact : quand des groupes entiers refusent, les réponses manquantes déforment les résultats plus qu'une semaine chargée."},
-      [{t:"Le temps et le moment, parce que la semaine d'examens laisse peu de temps aux familles pour répondre", fb:"Une semaine chargée réduit les réponses, mais les familles offensées manquent pour une raison liée aux questions."},
-       {t:"Coût, parce que réimprimer le sondage avec de meilleures questions coûterait plus cher", fb:"Le coût de réimpression est une question de budget, pas la raison de l'absence de groupes entiers de familles."},
-       {t:"Éthique, parce que les familles recevaient une petite chance à un tirage pour retourner le sondage", fb:"Un tirage est un détail secondaire ici; les résultats échouent parce que les questions éloignent des groupes."}],
+      [{t:"Le temps et le moment, parce que la semaine d'examens laisse peu de temps aux familles pour répondre à la maison", fb:"Une semaine chargée réduit les réponses, mais les familles offensées manquent pour une raison liée aux questions."},
+       {t:"Coût, parce que réimprimer le sondage avec de meilleures questions coûterait plus cher pour le budget de l'école", fb:"Le coût de réimpression est une question de budget, pas la raison de l'absence de groupes entiers de familles."},
+       {t:"Éthique, parce que les familles recevaient une petite chance à un tirage pour retourner le sondage rempli", fb:"Un tirage est un détail secondaire ici; les résultats échouent parce que les questions éloignent des groupes."}],
       "Deux influences sont présentes, mais des questions qui rejettent les traditions alimentaires des familles créent un échec de sensibilité culturelle qui retire des groupes entiers des résultats. La plus grande menace est la <b>sensibilité culturelle, parce que les familles offensées sautent le sondage et des groupes entiers manquent</b>.",
       {mode:"threat-lunchsurvey"});
   },
@@ -6229,8 +6250,8 @@ E("u9-collection-biggest-threat", 9, ["11.1"], 3, "var", varset([
     return mcq("Un intervieweur utilise des questions simples et claires, et offre aux élèves une collation gratuite seulement s'ils disent qu'ils aiment un nouveau jus à l'essai. La plupart des élèves louent le jus. Quel problème menace le plus la validité des résultats ?",
       {t:"Éthique, parce que récompenser seulement les louanges pousse les élèves à donner des réponses malhonnêtes", fb:"Exact : lier une récompense à une seule réponse traite les élèves injustement et remplit les données de fausses louanges."},
       [{t:"Le langage, parce que des questions simples et claires peuvent quand même guider les réponses des élèves", fb:"Une formulation simple est une force dans ce cas; la pression vient de la récompense, pas des mots."},
-       {t:"Biais, parce que les élèves qui aiment les collations sont plus portés à accepter l'entrevue", fb:"Aimer les collations joue un petit rôle; la récompense pour les louanges achète directement les réponses notées."},
-       {t:"Coût, parce qu'acheter des collations pour les entrevues ajoute au coût de l'étude", fb:"Le coût des collations touche le budget, pas si on peut croire les louanges notées."}],
+       {t:"Biais, parce que les élèves qui aiment les collations sont plus portés à accepter l'entrevue proposée", fb:"Aimer les collations joue un petit rôle; la récompense pour les louanges achète directement les réponses notées."},
+       {t:"Coût, parce qu'acheter des collations pour les entrevues ajoute beaucoup au coût de l'étude menée par les élèves", fb:"Le coût des collations touche le budget, pas si on peut croire les louanges notées."}],
       "Deux influences sont présentes, mais récompenser seulement les réponses positives est un échec d'éthique qui pousse les élèves vers des réponses malhonnêtes, donc on ne peut pas se fier aux louanges. La plus grande menace est l'<b>éthique, parce que récompenser seulement les louanges pousse les élèves à donner des réponses malhonnêtes</b>.",
       {mode:"threat-snack"});
   }
@@ -6240,16 +6261,16 @@ E("u9-match-influence", 9, ["11.2"], 2, "var", varset([
   function(){
     return mcq("Une ville veut sonder chaque ménage au sujet des réparations de routes. Imprimer et poster un long sondage aux 4 000 ménages, avec du personnel pour lire les réponses, utiliserait tout le budget annuel des sondages. Quelle influence cette situation illustre-t-elle ?",
       {t:"Coût, parce que joindre toute la population dépenserait tout le budget des sondages", fb:"Exact : l'argent est l'influence qui limite, car une couverture complète coûte plus que ce que la ville peut dépenser."},
-      [{t:"Biais, parce que les ménages avec une boîte aux lettres seraient plus portés à retourner une réponse", fb:"L'accès aux boîtes aux lettres n'est pas soulevé ici; la limite énoncée est le prix pour joindre tout le monde."},
-       {t:"Vie privée, parce que les ménages devraient partager des détails de réparation sur leurs propres routes", fb:"Les détails de réparation de routes sont des renseignements de travaux publics; la limite énoncée est le budget de l'envoi."},
-       {t:"Le temps et le moment, parce que lire des milliers de réponses prendrait beaucoup de semaines au personnel", fb:"Le temps de lecture est plausible, mais la situation insiste sur le budget dépensé au complet, ce qui est le coût."}],
+      [{t:"Biais, parce que les ménages avec une boîte aux lettres répondraient plus souvent que les autres", fb:"L'accès aux boîtes aux lettres n'est pas soulevé ici; la limite énoncée est le prix pour joindre tout le monde."},
+       {t:"Vie privée, parce que les ménages devraient partager des détails sur leurs routes", fb:"Les détails de réparation de routes sont des renseignements de travaux publics; la limite énoncée est le budget de l'envoi."},
+       {t:"Le temps et le moment, parce que lire des milliers de réponses prendrait des semaines au personnel", fb:"Le temps de lecture est plausible, mais la situation insiste sur le budget dépensé au complet, ce qui est le coût."}],
       "Quand l'argent nécessaire pour joindre tout le monde est le facteur qui limite, l'influence est le coût. Cette situation illustre le <b>coût, parce que joindre toute la population dépenserait tout le budget</b>.",
       {mode:"match-cost"});
   },
   function(){
     return mcq("Une coopérative agricole sonde ses membres au sujet de l'aide aux récoltes pendant la semaine de récolte la plus chargée, quand les membres travaillent de longues journées dans les champs. Très peu de membres répondent. Quelle influence cette situation illustre-t-elle ?",
       {t:"Le temps et le moment, parce que le sondage est arrivé quand les membres n'avaient pas le temps d'y répondre", fb:"Exact : le moment choisi pour le sondage entre en conflit avec la semaine la plus chargée de l'année agricole."},
-      [{t:"Le langage, parce que les questions du sondage étaient écrites en termes agricoles techniques", fb:"La formulation des questions n'est pas décrite ici; le problème énoncé est la semaine d'arrivée du sondage."},
+      [{t:"Le langage, parce que les questions du sondage étaient écrites en termes agricoles techniques du domaine", fb:"La formulation des questions n'est pas décrite ici; le problème énoncé est la semaine d'arrivée du sondage."},
        {t:"Sensibilité culturelle, parce que le sondage ignorait comment les familles membres soulignent le temps des récoltes", fb:"Les coutumes de récolte ne sont pas soulevées ici; le problème énoncé est que les membres n'ont pas de temps libre."},
        {t:"Éthique, parce que les membres subissaient de la pression pour répondre pendant leur semaine de travail la plus chargée", fb:"La pression n'est pas décrite ici; l'influence montrée est le mauvais moment du sondage lui-même."}],
       "Quand le moment choisi pour un sondage entre en conflit avec la vie des gens interrogés, l'influence est le temps et le moment. Cette situation illustre le <b>temps et le moment, parce que le sondage est arrivé quand les membres n'avaient pas le temps de répondre</b>.",
@@ -6258,17 +6279,17 @@ E("u9-match-influence", 9, ["11.2"], 2, "var", varset([
   function(){
     return mcq("Un sondage sur les activités de fin de semaine liste seulement les événements d'un groupe communautaire comme choix de réponses, donc les élèves d'autres milieux ne trouvent aucune de leurs activités habituelles dans la liste. Quelle influence cette situation illustre-t-elle ?",
       {t:"Sensibilité culturelle, parce que les choix laissent de côté les activités de beaucoup de milieux", fb:"Exact : des choix de réponses bâtis autour d'un groupe oublient les traditions de l'école au complet."},
-      [{t:"Biais, parce que seuls les élèves de ce groupe communautaire ont reçu le sondage", fb:"Le sondage est allé aux élèves en général; le problème est la liste de choix, pas qui a reçu le formulaire."},
-       {t:"Coût, parce qu'ajouter plus de choix de réponses rendrait le sondage plus long à imprimer", fb:"La longueur d'impression n'est pas soulevée ici; le problème énoncé est des choix qui excluent beaucoup d'élèves."},
-       {t:"Vie privée, parce que les élèves doivent révéler leurs activités de fin de semaine à leurs camarades de classe", fb:"Les activités de fin de semaine ici sont des choix ordinaires; le problème énoncé est une liste qui oublie des groupes entiers."}],
+      [{t:"Biais, parce que seuls les élèves de ce groupe communautaire ont reçu le sondage en classe", fb:"Le sondage est allé aux élèves en général; le problème est la liste de choix, pas qui a reçu le formulaire."},
+       {t:"Coût, parce qu'ajouter plus de choix de réponses rendrait le sondage plus long à imprimer pour tous", fb:"La longueur d'impression n'est pas soulevée ici; le problème énoncé est des choix qui excluent beaucoup d'élèves."},
+       {t:"Vie privée, parce que les élèves doivent révéler leurs activités de fin de semaine à leurs camarades", fb:"Les activités de fin de semaine ici sont des choix ordinaires; le problème énoncé est une liste qui oublie des groupes entiers."}],
       "Quand les choix de réponses sont bâtis autour d'un groupe et en oublient d'autres, l'influence est la sensibilité culturelle. Cette situation illustre la <b>sensibilité culturelle, parce que les choix laissent de côté beaucoup de milieux</b>.",
       {mode:"match-cultural"});
   },
   function(){
     return mcq("Une station de radio tient un sondage par appels qui demande aux auditeurs si son émission du matin est la meilleure en ville. Seuls les auditeurs motivés appellent, beaucoup d'entre eux des partisans quotidiens de l'émission. Quelle influence cette situation illustre-t-elle ?",
       {t:"Biais, parce que les partisans motivés qui choisissent d'appeler ne représentent pas tous les auditeurs de la ville", fb:"Exact : des volontaires qui aiment déjà l'émission penchent les résultats dans une direction dès le départ."},
-      [{t:"Le langage, parce que la question du sondage loue l'émission du matin dans sa formulation", fb:"La formulation ici est simple; le problème est que seuls des partisans qui se choisissent eux-mêmes participent."},
-       {t:"Le temps et le moment, parce que le sondage se déroule tôt le matin, quand beaucoup de gens travaillent", fb:"L'heure compte moins que qui appelle : les appelants sont des partisans, pas un reflet de la ville."},
+      [{t:"Le langage, parce que la question du sondage loue l'émission du matin dans sa formulation même", fb:"La formulation ici est simple; le problème est que seuls des partisans qui se choisissent eux-mêmes participent."},
+       {t:"Le temps et le moment, parce que le sondage se déroule tôt le matin, quand beaucoup de gens travaillent à cette heure", fb:"L'heure compte moins que qui appelle : les appelants sont des partisans, pas un reflet de la ville."},
        {t:"Coût, parce que tenir un sondage par téléphone chaque matin ajoute à la facture de téléphone de la station", fb:"Le coût du téléphone n'est pas soulevé ici; le problème énoncé est un groupe d'un seul côté qui répond à la question."}],
       "Quand les gens qui répondent sont des partisans qui se choisissent eux-mêmes plutôt qu'un reflet de tous, l'influence est le biais. Cette situation illustre le <b>biais, parce que les partisans motivés qui appellent ne représentent pas tous les auditeurs</b>.",
       {mode:"match-bias"});
@@ -6277,7 +6298,7 @@ E("u9-match-influence", 9, ["11.2"], 2, "var", varset([
     return mcq("Un sondage de bibliothèque demande aux visiteurs : « À quel point aimez-vous notre nouvelle salle de lecture incroyable et primée ? » La plupart des visiteurs choisissent la réponse du haut. Quelle influence cette situation illustre-t-elle ?",
       {t:"Le langage, parce que les mots de louange dans la question poussent les visiteurs vers la réponse du haut", fb:"Exact : des louanges chargées dans la formulation orientent les réponses avant que les visiteurs jugent la salle eux-mêmes."},
       [{t:"Biais, parce que seuls les visiteurs qui utilisent la salle de lecture ont reçu la question du sondage", fb:"Interroger les usagers de la salle est raisonnable ici; le problème est une formulation de louange qui dirige leurs réponses."},
-       {t:"Éthique, parce que les visiteurs recevaient un signet pour répondre à la question du sondage", fb:"Aucune offre n'est mentionnée ici; le problème énoncé est une formulation pleine de louanges pour la salle."},
+       {t:"Éthique, parce que les visiteurs recevaient un signet de la bibliothèque pour répondre à la question du sondage", fb:"Aucune offre n'est mentionnée ici; le problème énoncé est une formulation pleine de louanges pour la salle."},
        {t:"Sensibilité culturelle, parce que la question suppose que tous les visiteurs lisent de la même façon", fb:"Les habitudes de lecture selon les cultures ne sont pas soulevées ici; le problème est des louanges orientées dans la formulation."}],
       "Quand la formulation loue une réponse et pousse les répondants vers elle, l'influence est le langage. Cette situation illustre le <b>langage, parce que les mots de louange poussent les visiteurs vers la réponse du haut</b>.",
       {mode:"match-language"});
@@ -6285,9 +6306,9 @@ E("u9-match-influence", 9, ["11.2"], 2, "var", varset([
   function(){
     return mcq("Un sondage scolaire sur la santé demande aux élèves d'écrire leur nom et les médicaments qu'ils prennent sur le même formulaire, et les camarades de classe passent les formulaires remplis vers l'avant de la classe. Quelle influence cette situation illustre-t-elle ?",
       {t:"Vie privée, parce que les noms et les détails sur les médicaments peuvent être vus par les camarades qui manipulent les formulaires", fb:"Exact : des détails sensibles sur la santé liés à des noms sont exposés quand les formulaires passent entre beaucoup de mains."},
-      [{t:"Coût, parce qu'imprimer une ligne pour le nom et une ligne pour les médicaments rend chaque formulaire plus long", fb:"La longueur du formulaire est minime ici; le problème énoncé est des détails sensibles exposés aux camarades."},
-       {t:"Le temps et le moment, parce que passer les formulaires vers l'avant prend du temps à la fin du cours", fb:"Le temps pour passer les formulaires est un détail secondaire; l'influence montrée est des renseignements privés visibles par d'autres."},
-       {t:"Biais, parce que les élèves qui prennent des médicaments peuvent choisir de laisser le sondage vide", fb:"Des formulaires vides pourraient suivre, mais l'influence illustrée est des détails privés vus par les camarades."}],
+      [{t:"Coût, parce qu'imprimer une ligne pour le nom et une ligne pour les médicaments rend chaque formulaire plus long à remplir pour chaque élève de la classe", fb:"La longueur du formulaire est minime ici; le problème énoncé est des détails sensibles exposés aux camarades."},
+       {t:"Le temps et le moment, parce que passer les formulaires vers l'avant prend beaucoup de temps à la fin du cours", fb:"Le temps pour passer les formulaires est un détail secondaire; l'influence montrée est des renseignements privés visibles par d'autres."},
+       {t:"Biais, parce que les élèves qui prennent des médicaments peuvent choisir de laisser le sondage complètement vide", fb:"Des formulaires vides pourraient suivre, mais l'influence illustrée est des détails privés vus par les camarades."}],
       "Quand des détails personnels sensibles peuvent être vus par d'autres pendant la collecte, l'influence est la vie privée. Cette situation illustre la <b>vie privée, parce que les noms et les détails sur les médicaments peuvent être vus par les camarades de classe</b>.",
       {mode:"match-privacy"});
   }
@@ -6354,9 +6375,9 @@ E("u9-use-whole-population", 9, ["11.4"], 1, "var", varset([
   function(){
     return mcq("Quelle situation est le mieux répondue en utilisant toute la population ?",
       {t:"Une classe de 24 élèves qui choisit un thème pour sa propre fête de classe ce trimestre", fb:"Exact : la classe est petite et tout le monde est facile à joindre, donc interroger tout le monde a du sens."},
-      [{t:"Tous les conducteurs de la province qui évaluent l'état des routes dans la région", fb:"Les conducteurs d'une province sont bien trop nombreux à interroger un par un pour une seule question de classe."},
-       {t:"Chaque poisson d'un port vérifié pour connaître la taille moyenne de la prise", fb:"Attraper et vérifier chaque poisson est impossible en pratique, donc on utilise un échantillon à la place."},
-       {t:"Chaque pile d'un entrepôt vidée jusqu'au bout pour tester sa durée", fb:"Vider chaque pile détruit le stock testé, donc on utilise un échantillon à la place."}],
+      [{t:"Tous les conducteurs de la province qui évaluent l'état des routes dans la région en hiver", fb:"Les conducteurs d'une province sont bien trop nombreux à interroger un par un pour une seule question de classe."},
+       {t:"Chaque poisson d'un port vérifié pour connaître la taille moyenne de la prise du jour", fb:"Attraper et vérifier chaque poisson est impossible en pratique, donc on utilise un échantillon à la place."},
+       {t:"Chaque pile d'un entrepôt vidée jusqu'au bout pour tester sa durée de vie utile", fb:"Vider chaque pile détruit le stock testé, donc on utilise un échantillon à la place."}],
       "Utiliser toute une population a du sens quand le groupe est petit, peu coûteux à joindre, et que tout le monde peut participer. La meilleure situation est <b>une classe de 24 élèves qui choisit le thème de sa propre fête de classe</b>.",
       {mode:"wholepop-class"});
   },
@@ -6365,7 +6386,7 @@ E("u9-use-whole-population", 9, ["11.4"], 1, "var", varset([
       {t:"Un club d'échecs de 10 membres qui choisit quel soir tenir ses parties hebdomadaires", fb:"Exact : avec seulement 10 membres, tous faciles à joindre, interroger tout le monde est rapide et complet."},
       [{t:"Tous les acheteurs d'une ville qui évaluent un nouveau plan de stationnement au centre-ville pour le conseil", fb:"Les acheteurs d'une ville entière sont bien trop nombreux à interroger un par un pour cette question."},
        {t:"Chaque ampoule d'une usine brûlée jusqu'à ce qu'elle cesse de fonctionner pour tester sa durée de vie", fb:"Brûler chaque ampoule jusqu'à sa fin détruit le stock testé, donc on utilise un échantillon."},
-       {t:"Tous les résidents d'une province qui évaluent le déneigement hivernal sur les routes provinciales", fb:"Les résidents d'une province sont bien trop nombreux à joindre pour un seul sondage de ce genre."}],
+       {t:"Tous les résidents d'une province qui évaluent le déneigement hivernal", fb:"Les résidents d'une province sont bien trop nombreux à joindre pour un seul sondage de ce genre."}],
       "Utiliser toute une population a du sens quand le groupe est petit, peu coûteux à joindre, et que tout le monde peut participer. La meilleure situation est <b>un club d'échecs de 10 membres qui choisit son soir de parties</b>.",
       {mode:"wholepop-chess"});
   },
@@ -6382,7 +6403,7 @@ E("u9-use-whole-population", 9, ["11.4"], 1, "var", varset([
     return mcq("Quelle situation est le mieux répondue en utilisant toute la population ?",
       {t:"Une petite boulangerie qui demande à ses 6 employés quelle heure d'ouverture du matin leur convient", fb:"Exact : avec seulement 6 employés, tous faciles à joindre, la boulangerie peut interroger tout le monde directement."},
       [{t:"Tous les clients d'une chaîne nationale de magasins qui évaluent un nouveau plan de magasin", fb:"Les clients d'une chaîne nationale sont bien trop nombreux à interroger un par un pour cette question."},
-       {t:"Chaque bouteille d'eau d'une usine écrasée pour tester la force qu'elle peut supporter", fb:"Écraser chaque bouteille détruit les produits testés, donc on utilise un échantillon à la place."},
+       {t:"Chaque bouteille d'eau d'une usine écrasée pour tester la force qu'elle peut supporter sans se briser", fb:"Écraser chaque bouteille détruit les produits testés, donc on utilise un échantillon à la place."},
        {t:"Tous les propriétaires d'une ville qui évaluent une nouvelle taxe proposée qui touche la province", fb:"Les propriétaires d'une ville sont trop nombreux à interroger un par un pour une question provinciale."}],
       "Utiliser toute une population a du sens quand le groupe est petit, peu coûteux à joindre, et que tout le monde peut participer. La meilleure situation est <b>une petite boulangerie qui interroge ses 6 employés au sujet de l'heure d'ouverture</b>.",
       {mode:"wholepop-bakery"});
@@ -6404,7 +6425,7 @@ E("u9-population-limitation", 9, ["11.5"], 2, "var", varset([
       {t:"Tester toute la population détruirait chaque chandelle du stock étudié", fb:"Exact : chaque test consume la chandelle, donc tester toutes les chandelles ne laisse rien à vendre ou à utiliser."},
       [{t:"Le coût d'envoyer des sondages par la poste aux acheteurs de chandelles d'autres villes serait bien trop élevé", fb:"Aucun sondage n'est prévu ici; la limite est que le test lui-même utilise chaque chandelle testée."},
        {t:"Il n'y a pas assez de temps avant l'ouverture du magasin pour interroger chaque acheteur de chandelles", fb:"Les questions aux acheteurs ne font pas partie de cette étude; la limite est le test de combustion destructif lui-même."},
-       {t:"La population des acheteurs de chandelles dans tout le pays est trop grande à joindre en personne", fb:"Les acheteurs ne sont pas le groupe testé ici; les chandelles le sont, et les tests détruisent chacune d'elles."}],
+       {t:"Les acheteurs de chandelles du pays sont trop nombreux à joindre", fb:"Les acheteurs ne sont pas le groupe testé ici; les chandelles le sont, et les tests détruisent chacune d'elles."}],
       "Quand les tests détruisent l'objet testé, toute la population ne peut pas être utilisée, donc on teste un échantillon à la place. La limite est que <b>tester toute la population détruirait chaque chandelle</b>.",
       {mode:"limit-candles"});
   },
@@ -6412,7 +6433,7 @@ E("u9-population-limitation", 9, ["11.5"], 2, "var", varset([
     return mcq("Une région de santé veut l'opinion de chaque ménage de la province sur les heures des cliniques. Imprimer, poster et doter en personnel un sondage pour chaque ménage prendrait la plus grande part du budget de la région pour l'année. Quelle limite explique le mieux pourquoi on utilise un échantillon au lieu de toute la population ?",
       {t:"Le coût de joindre chaque ménage de la province est trop élevé pour le budget", fb:"Exact : une couverture complète consumerait la plus grande part d'un budget annuel, donc le coût écarte la population."},
       [{t:"Tester chaque formulaire de sondage de ménage détruirait les formulaires avant leur lecture", fb:"Lire des formulaires ne les détruit pas; la limite énoncée est l'argent qu'un envoi complet prend."},
-       {t:"La région a seulement deux ordinateurs disponibles pour noter les réponses au sondage", fb:"L'équipement n'est pas mentionné ici; la limite énoncée est le budget qu'un envoi complet utiliserait."},
+       {t:"La région a seulement deux ordinateurs pour noter les réponses", fb:"L'équipement n'est pas mentionné ici; la limite énoncée est le budget qu'un envoi complet utiliserait."},
        {t:"Les ménages ont besoin des résultats avant la fin de semaine, ce qui laisse trop peu de temps pour répondre", fb:"Une échéance de fin de semaine n'est pas mentionnée ici; la limite énoncée est le coût pour joindre tout le monde."}],
       "Quand joindre tout le monde coûte plus que le budget disponible, le coût est la limite qui écarte toute la population. La limite est que <b>le coût de joindre chaque ménage est trop élevé</b>.",
       {mode:"limit-clinic"});
@@ -6431,7 +6452,7 @@ E("u9-population-limitation", 9, ["11.5"], 2, "var", varset([
       {t:"Les outils et le personnel disponibles pour les tests sont trop limités pour couvrir chaque puits", fb:"Exact : deux trousses qui testent un puits par jour ne peuvent pas couvrir chaque puits, donc les ressources l'écartent."},
       [{t:"Le coût d'acheter le terrain autour de chaque puits de la région serait bien trop élevé", fb:"L'achat de terrain ne fait pas partie de cette étude; la limite énoncée est le petit nombre de trousses de test."},
        {t:"Tester un échantillon d'un puits utilise tout le puits, ce qui laisse le propriétaire sans eau", fb:"Un échantillon d'eau ne vide pas un puits; la limite énoncée est le peu de trousses disponibles pour les tests."},
-       {t:"Les propriétaires de puits ont besoin de leurs résultats dans l'heure, ce qui laisse trop peu de temps pour tester", fb:"Une échéance d'une heure n'est pas mentionnée ici; la limite énoncée est l'équipement de test limité."}],
+       {t:"Les propriétaires de puits ont besoin de leurs résultats vite, ce qui laisse trop peu de temps pour tester", fb:"Une échéance d'une heure n'est pas mentionnée ici; la limite énoncée est l'équipement de test limité."}],
       "Quand l'équipement et les gens disponibles ne peuvent pas couvrir tout le groupe, des ressources limitées écartent toute la population. La limite est que <b>les outils et le personnel disponibles sont trop limités</b>.",
       {mode:"limit-wells"});
   },
@@ -6461,7 +6482,7 @@ E("u9-generalization-critique", 9, ["11.6"], 3, "var", varset([
       {t:"Les membres d'un gymnase font plus d'exercice que la plupart des adultes, donc l'échantillon ne représente pas toute la ville", fb:"Exact : les gens qui se joignent à un gymnase diffèrent de la population générale exactement dans l'habitude mesurée."},
       [{t:"L'affirmation est solide, parce que les membres d'un gymnase sont des adultes et l'affirmation parle des adultes de la ville", fb:"Être des adultes ne suffit pas; les membres d'un gymnase sont des adultes atypiques pour une question sur les habitudes d'exercice."},
        {t:"L'échantillon est trop petit à utiliser, parce qu'un seul gymnase peut contenir seulement une poignée de membres", fb:"La taille du gymnase n'est pas donnée ici; le problème est que les membres diffèrent de la ville, pas le nombre de personnes."},
-       {t:"L'affirmation est solide, parce qu'un sondage dans un gymnase est une façon directe d'étudier les habitudes d'exercice", fb:"Le contact direct ne corrige pas un échantillon tiré seulement de gens qui choisissent déjà de faire souvent de l'exercice."}],
+       {t:"L'affirmation est solide, parce qu'un sondage dans un gymnase est une façon directe d'étudier les habitudes d'exercice des gens", fb:"Le contact direct ne corrige pas un échantillon tiré seulement de gens qui choisissent déjà de faire souvent de l'exercice."}],
       "Une généralisation vaut seulement ce que vaut l'échantillon derrière elle : un échantillon qui diffère de la population sur le sujet même étudié ne peut pas soutenir une affirmation pour toute la ville. La critique solide est que <b>les membres d'un gymnase ne représentent pas toute la ville</b>.",
       {mode:"critique-gym"});
   },
@@ -6469,7 +6490,7 @@ E("u9-generalization-critique", 9, ["11.6"], 3, "var", varset([
     return mcq("Une école tire 200 noms d'élèves au hasard dans toutes les années et les sonde sur l'utilisation de la bibliothèque, puis affirme que les résultats décrivent l'utilisation de la bibliothèque dans toute l'école. Quelle option juge cette généralisation correctement ?",
       {t:"La généralisation est raisonnable, parce qu'un grand échantillon au hasard de toutes les années peut représenter l'école", fb:"Exact : un choix au hasard dans toutes les années avec 200 élèves donne à l'affirmation un échantillon solide derrière elle."},
       [{t:"La généralisation échoue, parce que tout échantillon plus petit que toute l'école est toujours invalide", fb:"Les échantillons peuvent soutenir des affirmations quand ils sont grands, au hasard et tirés de tout le groupe étudié."},
-       {t:"La généralisation échoue, parce que les usagers de la bibliothèque étaient plus portés à répondre au sondage à l'école", fb:"Les noms ont été tirés au hasard dans toutes les années, donc les usagers motivés n'ont pas de place spéciale dans cet échantillon."},
+       {t:"La généralisation échoue, parce que les usagers de la bibliothèque étaient plus portés à répondre au sondage à l'école ce jour-là", fb:"Les noms ont été tirés au hasard dans toutes les années, donc les usagers motivés n'ont pas de place spéciale dans cet échantillon."},
        {t:"La généralisation est raisonnable, parce que les élèves sondés visitent tous la même salle de bibliothèque", fb:"Partager une salle de bibliothèque n'est pas la raison; le choix au hasard dans toutes les années est ce qui soutient l'affirmation."}],
       "Une généralisation vaut seulement ce que vaut l'échantillon derrière elle, et un grand échantillon au hasard tiré de tout le groupe peut soutenir une affirmation sur ce groupe. Le bon jugement est que <b>la généralisation est raisonnable, parce que l'échantillon est grand et au hasard</b>.",
       {mode:"critique-random"});
@@ -6477,7 +6498,7 @@ E("u9-generalization-critique", 9, ["11.6"], 3, "var", varset([
   function(){
     return mcq("Un élève demande aux gens dans un parc de planches si la ville devrait construire un plus grand parc de planches, puis affirme que la plupart des résidents appuient le projet. Quelle option donne la critique la plus solide de cette généralisation à partir d'un échantillon ?",
       {t:"Les gens dans un parc de planches favorisent déjà les parcs de planches, donc l'échantillon penche d'un côté dès le départ", fb:"Exact : interroger seulement les usagers au sujet de leur propre installation place les réponses vers l'appui au projet."},
-      [{t:"L'affirmation est solide, parce que les gens au parc en savent plus sur les parcs de planches que les autres", fb:"Connaître les parcs de planches ne rend pas les usagers du parc typiques de tous les résidents de la ville."},
+      [{t:"L'affirmation est solide, parce que les gens au parc en savent plus sur les parcs de planches que les autres gens de la ville", fb:"Connaître les parcs de planches ne rend pas les usagers du parc typiques de tous les résidents de la ville."},
        {t:"L'échantillon est trop grand pour un seul élève, donc moins de gens auraient dû être interrogés", fb:"La taille de l'échantillon n'est pas donnée comme le problème ici; le problème est d'interroger seulement des gens qui utilisent déjà le parc."},
        {t:"L'affirmation est solide, parce que la question a été posée en personne plutôt que sur un formulaire imprimé", fb:"Poser la question en personne ne corrige pas un échantillon tiré seulement de gens qui favorisent déjà le projet."}],
       "Une généralisation vaut seulement ce que vaut l'échantillon derrière elle : interroger seulement des gens qui utilisent déjà une installation ne peut pas soutenir une affirmation sur tous les résidents. La critique solide est que <b>les gens dans un parc de planches favorisent déjà les parcs de planches</b>.",
@@ -6603,8 +6624,8 @@ E("u9-supported-conclusion", 9, ["11.9"], 3, "var", varset([
   function(){
     return mcq("Pour un projet, un élève note la température à la récréation pendant 10 jours d'école en mai. Pendant 6 des 10 jours, la température était au-dessus de 10 degrés, et pendant 4 jours elle était à 10 degrés ou moins. Quelle conclusion ces données soutiennent-elles vraiment ?",
       {t:"Pendant la plupart des 10 jours notés, la température à la récréation était au-dessus de 10 degrés en mai", fb:"Exact : 6 jours sur 10, c'est la plupart des jours notés, donc la conclusion correspond aux notes."},
-      [{t:"Mai est toujours le mois le plus chaud de l'année scolaire dans cette partie de la province", fb:"Dix jours dans un mois ne peuvent pas classer tous les mois, et aucun autre mois n'a été noté du tout."},
-       {t:"Un temps chaud à la récréation fait que les élèves jouent dehors plus longtemps à la récréation", fb:"Le projet a noté les températures seulement; il n'a rien mesuré sur le temps de jeu ni ses causes."},
+      [{t:"Mai est toujours le mois le plus chaud de l'année scolaire dans cette partie de la province au complet", fb:"Dix jours dans un mois ne peuvent pas classer tous les mois, et aucun autre mois n'a été noté du tout."},
+       {t:"Un temps chaud à la récréation fait que les élèves jouent dehors plus longtemps à la récréation chaque jour", fb:"Le projet a noté les températures seulement; il n'a rien mesuré sur le temps de jeu ni ses causes."},
        {t:"Pendant la plupart des 10 jours notés, la température à la récréation était à 10 degrés ou moins", fb:"Seulement 4 jours sur 10 étaient à 10 degrés ou moins, donc cette conclusion contredit les notes."}],
       "Une conclusion doit rester dans les données recueillies : 6 des 10 jours notés étaient au-dessus de 10 degrés, et rien de plus large n'a été mesuré. La conclusion soutenue est que <b>pendant la plupart des 10 jours notés, la température était au-dessus de 10 degrés</b>.",
       {mode:"conclusion-temp"});
@@ -6615,27 +6636,27 @@ E("u9-self-assessment", 9, ["11.10"], 1, "var", varset([
   function(){
     return mcq("Un critère de grille dit qu'un projet doit choisir une population ou un échantillon et justifier le choix. Pour le projet, un élève a interrogé seulement des amis proches et n'a donné aucune raison pour les choisir. Quel énoncé d'autoévaluation est exact pour ce critère ?",
       {t:"Mon projet est faible sur ce critère, parce que j'ai interrogé seulement des amis et donné aucune raison pour le choix", fb:"Exact : l'énoncé associe honnêtement le critère à ce que le projet a vraiment fait."},
-      [{t:"Mon projet était excellent en tout, et toute l'étude s'est très bien passée du début à la fin", fb:"Des louanges générales ne nomment aucun critère ni aucune preuve, donc elles ne peuvent pas juger cette partie du projet."},
-       {t:"Mon projet répond pleinement à ce critère, parce que mes amis ont aimé répondre à toutes mes questions", fb:"Le plaisir ne justifie pas le choix d'un échantillon; le critère demande un choix raisonné."},
-       {t:"Mon projet avait une belle page de titre et des graphiques soignés, donc cette partie du projet est forte", fb:"Les titres et les graphiques appartiennent à d'autres critères; ce critère porte sur justifier qui a été interrogé."}],
+      [{t:"Mon projet était excellent en tout, et toute l'étude s'est très bien passée du début à la fin du travail", fb:"Des louanges générales ne nomment aucun critère ni aucune preuve, donc elles ne peuvent pas juger cette partie du projet."},
+       {t:"Mon projet répond pleinement à ce critère, parce que mes amis ont aimé répondre à toutes mes questions d'entrevue", fb:"Le plaisir ne justifie pas le choix d'un échantillon; le critère demande un choix raisonné."},
+       {t:"Mon projet avait une belle page de titre et des graphiques soignés, donc cette partie du projet est forte en tout point", fb:"Les titres et les graphiques appartiennent à d'autres critères; ce critère porte sur justifier qui a été interrogé."}],
       "L'autoévaluation applique honnêtement la grille au travail fait : le projet a interrogé seulement des amis sans justification, donc il est faible sur ce critère. L'énoncé exact est que <b>mon projet est faible, parce que j'ai interrogé seulement des amis et donné aucune raison</b>.",
       {mode:"selfassess-sample"});
   },
   function(){
     return mcq("Un critère de grille dit qu'une méthode de collecte de données doit inclure des considérations sociales, comme la permission et la vie privée. Pour le projet, un élève a demandé la permission avant chaque entrevue et gardé les noms hors de chaque formulaire. Quel énoncé d'autoévaluation est exact pour ce critère ?",
       {t:"Mon projet répond à ce critère, parce que j'ai demandé la permission d'abord et gardé les noms hors de chaque formulaire utilisé", fb:"Exact : l'énoncé lie le critère à deux considérations sociales que le projet a vraiment utilisées."},
-      [{t:"Mon projet était vraiment bon en général, et je suis fier de comment toute l'étude s'est passée à la fin", fb:"Une fierté générale ne nomme aucun critère ni aucune preuve, donc elle ne peut pas juger cette partie du projet."},
-       {t:"Mon projet est faible sur ce critère, parce que mon échantillon venait d'une seule année de l'école", fb:"La gamme d'années de l'échantillon appartient à un autre critère; sur les considérations sociales, ce projet a livré."},
-       {t:"Mon projet répond pleinement à ce critère, parce que mes questions d'entrevue étaient courtes et faciles à lire", fb:"Des questions courtes aident la clarté, mais le critère porte sur les protections de permission et de vie privée."}],
+      [{t:"Mon projet était vraiment bon en général, et je suis fier de comment toute l'étude s'est passée à la fin du projet", fb:"Une fierté générale ne nomme aucun critère ni aucune preuve, donc elle ne peut pas juger cette partie du projet."},
+       {t:"Mon projet est faible sur ce critère, parce que mon échantillon venait d'une seule année de toute l'école", fb:"La gamme d'années de l'échantillon appartient à un autre critère; sur les considérations sociales, ce projet a livré."},
+       {t:"Mon projet répond pleinement à ce critère, parce que mes questions d'entrevue étaient courtes et faciles à lire pour tous les élèves", fb:"Des questions courtes aident la clarté, mais le critère porte sur les protections de permission et de vie privée."}],
       "L'autoévaluation applique honnêtement la grille au travail fait : la permission a été demandée et les noms ont été gardés hors des formulaires, donc le projet répond à ce critère. L'énoncé exact est que <b>mon projet répond à ce critère, parce que j'ai demandé la permission et gardé les noms hors des formulaires</b>.",
       {mode:"selfassess-social"});
   },
   function(){
     return mcq("Un critère de grille dit que les résultats doivent être communiqués clairement, avec des graphiques étiquetés qu'un public peut lire. Pour le projet, un élève a présenté un graphique sans titre et sans étiquettes sur ses axes. Quel énoncé d'autoévaluation est exact pour ce critère ?",
       {t:"Mon projet répond en partie à ce critère, parce que mon graphique montre les données mais n'a pas de titre ni d'étiquettes d'axes", fb:"Exact : l'énoncé reconnaît honnêtement le graphique tout en nommant exactement ce que le critère demande encore."},
-      [{t:"Mon projet était fantastique du début à la fin, et la présentation était la meilleure partie de mon travail", fb:"Des louanges générales ne nomment aucun critère ni aucune preuve, donc elles ne peuvent pas juger cette partie du projet."},
-       {t:"Mon projet répond pleinement à ce critère, parce que mon public a applaudi à la fin de ma présentation", fb:"Les applaudissements ne montrent pas une communication claire; le critère demande des graphiques étiquetés et lisibles."},
-       {t:"Mon projet est faible sur ce critère, parce que mon échantillon a été tiré d'une seule classe seulement", fb:"La source de l'échantillon appartient à un autre critère; ce critère porte sur communiquer les résultats."}],
+      [{t:"Mon projet était fantastique du début à la fin, et la présentation était la meilleure partie de mon travail de recherche", fb:"Des louanges générales ne nomment aucun critère ni aucune preuve, donc elles ne peuvent pas juger cette partie du projet."},
+       {t:"Mon projet répond pleinement à ce critère, parce que mon public a applaudi à la fin de ma présentation devant toute la classe réunie", fb:"Les applaudissements ne montrent pas une communication claire; le critère demande des graphiques étiquetés et lisibles."},
+       {t:"Mon projet est faible sur ce critère, parce que mon échantillon a été tiré d'une seule classe de l'école seulement", fb:"La source de l'échantillon appartient à un autre critère; ce critère porte sur communiquer les résultats."}],
       "L'autoévaluation applique honnêtement la grille au travail fait : le graphique montre les données mais manque un titre et des étiquettes, donc le projet répond en partie à ce critère. L'énoncé exact est que <b>mon projet répond en partie à ce critère, parce que le graphique n'a pas de titre ni d'étiquettes d'axes</b>.",
       {mode:"selfassess-charts"});
   },
