@@ -790,7 +790,7 @@ E("u1-between-two", 1, ["3.2"], 1, "gen", function () {
 }, ["Un nombre entre deux autres est plus grand que le plus petit et plus petit que le plus grand.", "Compare chaque choix avec les deux bornes, une à la fois."]);
 
 // 3. L2, 6.1, CR 3: add or subtract fractions in context, answer as a decimal.
-E("u1-frac-context", 1, ["6.1"], 2, "gen", function () {
+E("u1-frac-context", 1, ["6.1"], 1, "gen", function () {
   var dens = [2, 4, 5, 8, 10, 20];
   var d1 = pick(dens), d2 = pick(dens);
   var n1 = ri(1, 15), n2 = ri(1, 15);
@@ -882,7 +882,7 @@ E("u1-ooo-evaluate-mc", 1, ["6.2"], 2, "gen", function () {
 }, ["Fais d'abord les parenthèses, puis la multiplication et la division, puis l'addition et la soustraction.", "Réécris l'expression après chaque étape pour garder l'ordre clair."]);
 
 // 6. L2, 6.3, CR 2: order of operations with technology, longer decimal expression.
-E("u1-ooo-calculator", 1, ["6.3"], 2, "gen", function () {
+E("u1-ooo-calculator", 1, ["6.3"], 1, "gen", function () {
   var a = ri(20, 200) / 10, b = ri(10, 90) / 10, c = ri(2, 9), d = ri(5, 50) / 10;
   var e = pick([2, 4, 5]);
   var f = ri(5, 60) / 10;
@@ -895,7 +895,7 @@ E("u1-ooo-calculator", 1, ["6.3"], 2, "gen", function () {
 }, ["Entre l'expression complète d'un coup, avec les touches de parenthèses autour des parties regroupées.", "Commence par les parenthèses les plus intérieures si tu vérifies la valeur par étapes."]);
 
 // 7. L2, 6.4, CR 2: find the first error in a worked solution, MC.
-E("u1-ooo-first-error", 1, ["6.4"], 2, "gen", function () {
+E("u1-ooo-first-error", 1, ["6.4"], 1, "gen", function () {
   var scen = ri(0, 3);
   var expr, stepTexts, errIdx, correctVal, errExplain;
   if (scen === 0) {
@@ -1137,7 +1137,7 @@ E("u2-root-between", 2, ["6.8"], 1, "gen", function(){
     {mode:"between", a:a, b:b});
 }, ["Mets les deux nombres donnés au carré pour transformer la question en intervalle pour le nombre lui-même.", "Vérifie quel candidat se trouve entre les deux carrés que tu viens de trouver."]);
 
-E("u2-spot-error", 2, ["6.10"], 2, "gen", function(){
+E("u2-spot-error", 2, ["6.10"], 1, "gen", function(){
   var mode=ri(1,4);
   if(mode===1){
     var c, R;
@@ -1628,7 +1628,7 @@ E("u3-power-of-power-law", 3, ["3.11"], 1, "gen", function () {
     { mode: "power-of-power-law", a: a, m: m, n: n });
 }, ["Une puissance élevée à une autre puissance utilise la loi de la puissance d'une puissance.", "Multiplie l'exposant intérieur par l'exposant extérieur."]);
 
-E("u3-two-laws-evaluate", 3, ["3.12"], 2, "gen", function () {
+E("u3-two-laws-evaluate", 3, ["3.12"], 1, "gen", function () {
   var mode = pick(["prod", "quot", "powpow"]);
   var a, expr, val, steps;
   if (mode === "prod") {
@@ -1652,7 +1652,7 @@ E("u3-two-laws-evaluate", 3, ["3.12"], 2, "gen", function () {
     { mode: "two-laws-" + mode, a: a });
 }, ["Utilise une loi des exposants pour écrire d'abord l'expression comme une seule puissance.", "Combine les exposants avec la loi qui correspond, puis calcule cette puissance."]);
 
-E("u3-power-of-product-quotient", 3, ["3.12"], 2, "gen", function () {
+E("u3-power-of-product-quotient", 3, ["3.12"], 1, "gen", function () {
   var mode = pick(["prod", "prod", "quotInt", "quotDec"]);
   if (mode === "prod") {
     var a = ri(2, 6), b = ri(2, 6), n = ri(2, 3);
@@ -1715,7 +1715,7 @@ E("u3-difference-of-powers", 3, ["3.14"], 1, "gen", function () {
     { mode: "difference-" + mode });
 }, ["Calcule chaque puissance séparément avant de soustraire.", "Trouve la valeur de la première puissance, puis celle de la deuxième, puis soustrais."]);
 
-E("u3-find-the-error", 3, ["3.15"], 2, "gen", function () {
+E("u3-find-the-error", 3, ["3.15"], 1, "gen", function () {
   var tuples = [];
   for (var a = 2; a <= 3; a++) for (var m = 2; m <= 4; m++) for (var n = 2; n <= 4; n++) for (var p = 2; p <= 4; p++) {
     if (m * n === m + n) continue;
@@ -1909,7 +1909,7 @@ E("u4-expr-to-tiles", 4, ["8.15"], 1, "gen", function(){
   return mcq("Quelle description correspond à un modèle de tuiles algébriques de "+u4m(2,-3,4)+"?",{t:u4tiles(2,-3,4),fb:"Exact : chaque terme devient des tuiles de la même sorte et du même signe."},[{t:u4tiles(2,3,4),fb:"Cela inverse le signe des tuiles de x."},{t:u4tiles(2,-3,-4),fb:"Cela inverse le signe des tuiles d'unité."},{t:u4tiles(-3,2,4),fb:"Cela échange le nombre de tuiles de x carré avec le nombre de tuiles de x."}],"La lecture terme à terme donne <b>"+u4tiles(2,-3,4)+"</b>.",{mode:"expr2tiles",a:2,b:-3,c:4});
 }, ["Associe chaque terme de l'expression à des tuiles de la même sorte et du même signe.", "Commence par le terme en x carré : son coefficient dit combien il y a de grandes tuiles carrées, et son signe dit positives ou négatives."]);
 
-E("u4-equivalent", 4, ["8.4","8.5"], 2, "gen", function(){
+E("u4-equivalent", 4, ["8.4","8.5"], 1, "gen", function(){
   for(var att=0;att<200;att++){
     var a=u4nz(-8,8),b=ri(-8,8),c=u4nz(-8,8),d=ri(-8,8);
     if(b===0&&d===0)continue;
@@ -1926,7 +1926,7 @@ E("u4-equivalent", 4, ["8.4","8.5"], 2, "gen", function(){
   return mcq("Quelle expression est équivalente à \\(3x+2+5x-4\\)?",{t:u4m(0,8,-2),fb:"Exact : les termes en x se combinent et les constantes se combinent."},[{t:u4m(0,8,6),fb:"Les constantes ont été additionnées sans leur signe."},{t:u4m(0,-2,-2),fb:"Les coefficients de x ont été soustraits au lieu d'être additionnés."},{t:u4m(0,6,0),fb:"Cela combine des termes non semblables en un seul terme."}],"La combinaison des termes semblables donne <b>"+u4m(0,8,-2)+"</b>.",{mode:"combine",a:3,b:2,c:5,d:-4});
 }, ["Regroupe les termes en x ensemble et les constantes ensemble, puis combine chaque groupe.", "Additionne d'abord les deux coefficients de x, en gardant le signe des deux nombres."]);
 
-E("u4-add", 4, ["8.6"], 2, "gen", function(){
+E("u4-add", 4, ["8.6"], 1, "gen", function(){
   for(var att=0;att<200;att++){
     var tri=ri(0,1)===1;
     var a1=tri?u4nz(-5,5):0,b1=u4nz(-8,8),c1=u4nz(-8,8);
@@ -1988,7 +1988,7 @@ E("u4-addsub-xy", 4, ["8.11"], 2, "gen", function(){
   return mcq("Additionne : \\((2x+3y)+(x-2y)\\)",{t:u4mxy(3,1,0),fb:"Exact : les termes en x, les termes en y et les constantes sont traités séparément."},[{t:u4mxy(3,5,0),fb:"Les coefficients de y ont été traités avec le mauvais signe."},{t:u4mxy(4,1,0),fb:"Cela combine les termes en x et en y, qui sont non semblables."},{t:u4mxy(2,1,0),fb:"Les coefficients de x n'ont pas été additionnés."}],"La combinaison des termes semblables donne <b>"+u4mxy(3,1,0)+"</b>.",{mode:"xy-add"});
 }, ["Garde les termes en x, les termes en y et les constantes dans des groupes séparés ; les termes non semblables restent séparés.", "Combine d'abord les coefficients de x, puis fais la même chose pour les coefficients de y."]);
 
-E("u4-multiply-monomial", 4, ["8.8"], 2, "gen", function(){
+E("u4-multiply-monomial", 4, ["8.8"], 1, "gen", function(){
   for(var att=0;att<200;att++){
     var mode=ri(0,2);
     if(mode===2){
@@ -2014,7 +2014,7 @@ E("u4-multiply-monomial", 4, ["8.8"], 2, "gen", function(){
   return mcq("Multiplie : \\(3(2x+5)\\)",{t:u4m(0,6,15),fb:"Exact : le monôme multiplie chaque terme."},[{t:u4m(0,6,5),fb:"La constante n'a pas été multipliée."},{t:u4m(0,5,15),fb:"Le terme en x n'a pas été multiplié."},{t:u4m(0,6,-15),fb:"Le produit de la constante a le mauvais signe."}],"La multiplication de chaque terme donne <b>"+u4m(0,6,15)+"</b>.",{mode:"const-times-bi",cr:3});
 }, ["Le monôme multiplie chaque terme dans les parenthèses, pas seulement le premier.", "Multiplie d'abord le monôme par le premier terme, puis par chaque terme restant."]);
 
-E("u4-divide-monomial", 4, ["8.9"], 2, "gen", function(){
+E("u4-divide-monomial", 4, ["8.9"], 1, "gen", function(){
   for(var att=0;att<200;att++){
     if(ri(0,1)===0){
       var a=u4nz(-7,7),b=u4nz(-8,8);
@@ -2039,7 +2039,7 @@ E("u4-divide-monomial", 4, ["8.9"], 2, "gen", function(){
   return mcq("Divise : \\((6x+9) \\div 3\\)",{t:u4m(0,2,3),fb:"Exact : chaque terme est divisé par le monôme."},[{t:u4m(0,2,9),fb:"La constante n'a pas été divisée."},{t:u4m(0,3,6),fb:"Cela soustrait le diviseur de chaque coefficient."},{t:u4m(0,2,-3),fb:"Le quotient de la constante a le mauvais signe."}],"La division de chaque terme donne <b>"+u4m(0,2,3)+"</b>.",{mode:"div-const",cr:2});
 }, ["Chaque terme du polynôme est divisé par le monôme, un terme à la fois.", "Divise d'abord le premier terme, puis divise chaque terme restant par le même monôme."]);
 
-E("u4-mult-div-mixed", 4, ["8.12"], 2, "gen", function(){
+E("u4-mult-div-mixed", 4, ["8.12"], 1, "gen", function(){
   for(var att=0;att<200;att++){
     if(ri(0,1)===0){
       var k=pick([-4,-3,-2,2,3,4]);
@@ -2062,7 +2062,7 @@ E("u4-mult-div-mixed", 4, ["8.12"], 2, "gen", function(){
   return mcq("Multiplie : \\(2(3x+4)\\)",{t:u4m(0,6,8),fb:"Exact : le monôme multiplie chaque terme."},[{t:u4m(0,6,4),fb:"La constante n'a pas été multipliée."},{t:u4m(0,3,8),fb:"Le terme en x n'a pas été multiplié."},{t:u4m(0,6,-8),fb:"Le produit de la constante a le mauvais signe."}],"La multiplication de chaque terme donne <b>"+u4m(0,6,8)+"</b>.",{mode:"multiply",cr:2});
 }, ["Décide d'abord si le monôme multiplie ou divise, puis applique-le à chaque terme.", "Applique d'abord l'opération au premier terme, puis à chaque terme restant."]);
 
-E("u4-error-step", 4, ["8.13"], 2, "gen", function(){
+E("u4-error-step", 4, ["8.13"], 1, "gen", function(){
   for(var att=0;att<200;att++){
     var a=ri(3,9),b=ri(2,9),c=ri(2,8),d=ri(2,9);
     if(a-c===0||b-d===0)continue;
@@ -2109,7 +2109,7 @@ E("u4-equivalent-pair", 4, ["8.10"], 1, "gen", function(){
   return mcq("Quelles sont les deux expressions équivalentes ?",{t:u4m(0,3,2)+" et \\(2+3x\\)",fb:"Exact : les deux expressions ont exactement les mêmes termes."},[{t:u4m(0,3,2)+" et "+u4m(0,3,-2),fb:"La constante change de signe, donc elles sont différentes."},{t:u4m(0,2,3)+" et "+u4m(0,3,2),fb:"Le coefficient de x et la constante échangent leur place, donc elles sont différentes."},{t:u4m(0,3,2)+" et "+u4m(0,-3,2),fb:"Le coefficient de x change de signe, donc elles sont différentes."}],"La paire équivalente est <b>"+u4m(0,3,2)+" et \\(2+3x\\)</b>.",{mode:"pair"});
 }, ["Simplifie chaque paire ou compare-la terme à terme : des expressions équivalentes ont des termes identiques.", "Vérifie d'abord une paire : compare son coefficient de x et sa constante des deux côtés."]);
 
-E("u4-tiles-addsub", 4, ["8.6","8.7"], 2, "gen", function(){
+E("u4-tiles-addsub", 4, ["8.6","8.7"], 1, "gen", function(){
   for(var att=0;att<200;att++){
     var sub=ri(0,1)===1;
     var a1=ri(-3,3),b1=ri(-4,4),c1=ri(-4,4);
@@ -2300,7 +2300,7 @@ E("u1-ooo-brackets-mc", 1, ["6.2"], 2, "gen", function () {
 }, ["Fais d'abord les parenthèses les plus intérieures, puis fais les divisions et les multiplications de gauche à droite.", "Additionne d'abord la fraction et le nombre décimal dans les parenthèses intérieures."]);
 
 // T2. L2, 6.3: one calculator entry, ask for the displayed rounded value, MC.
-E("u1-ooo-calc-display", 1, ["6.3"], 2, "gen", function () {
+E("u1-ooo-calc-display", 1, ["6.3"], 1, "gen", function () {
   var names = ["Alex", "Jamie", "Robin", "Casey", "Taylor", "Jordan"];
   var P = null;
   for (var tries = 0; tries < 300 && !P; tries++) {
@@ -3144,7 +3144,7 @@ function u4tArea(m,p,c){
   return s+'</svg>';
 }
 
-E("u4-tiles-figure-expr", 4, ["8.16"], 2, "gen", function(){
+E("u4-tiles-figure-expr", 4, ["8.16"], 1, "gen", function(){
   for(var att=0;att<300;att++){
     var a=ri(-3,3),b=ri(-5,5),c=ri(-5,5);
     var nz=(a!==0?1:0)+(b!==0?1:0)+(c!==0?1:0);
@@ -3173,7 +3173,7 @@ E("u4-tiles-figure-expr", 4, ["8.16"], 2, "gen", function(){
   return qf;
 }, ["Lis l'image tuile par tuile : compte chaque sorte et garde le signe montré sur les tuiles.", "Compte d'abord les grands carrés : ce nombre, avec son signe, est le coefficient de x au carré."]);
 
-E("u4-tiles-figure-build", 4, ["8.15"], 2, "gen", function(){
+E("u4-tiles-figure-build", 4, ["8.15"], 1, "gen", function(){
   function kindName(k){return k===0?"x au carré":(k===1?"x":"unité");}
   function kindTex(k){return k===0?"x^{2}":(k===1?"x":"\\text{unité}");}
   function tileWord(n){return n===1?"tuile":"tuiles";}
@@ -3474,7 +3474,7 @@ E("u5-inspection-basic", 5, ["8.19"], 1, "gen", function () {
 }, ["Pense au fait de multiplication ou de division caché dans l'équation.", "Demande-toi d'abord : quel nombre, multiplié par le coefficient (ou divisé par lui), donne le côté droit ?"]);
 
 // 5. L2, 8.19: systematic trial with tried values shown.
-E("u5-trial-table", 5, ["8.19"], 2, "gen", function () {
+E("u5-trial-table", 5, ["8.19"], 1, "gen", function () {
   var a = ri(2, 6), x0 = ri(3, 9), b = ri(1, 9);
   var c = a * x0 + b, v1 = a * (x0 - 2) + b, v2 = a * (x0 - 1) + b, v3 = a * (x0 + 1) + b;
   var prompt = "Sam résout \\(" + u5lin(a, b) + " = " + fmtD(c) + "\\) par essai systématique, en essayant une valeur à la fois. Essayer \\(x = " + fmtD(x0 - 2) + "\\) donne un côté gauche de " + fmtD(v1) + ". Essayer \\(x = " + fmtD(x0 - 1) + "\\) donne un côté gauche de " + fmtD(v2) + ". Quelle valeur résout l'équation ?";
@@ -4809,7 +4809,7 @@ E("u7-proportional-check", 7, ["10.18"], 2, "gen", function () {
  * keep comma separators, as in the English.
  */
 
-E("u7-similar-verdict", 7, ["10.7"], 2, "gen", function () {
+E("u7-similar-verdict", 7, ["10.7"], 1, "gen", function () {
   var triples = [[3, 4, 5], [5, 12, 13], [6, 8, 10], [5, 5, 6], [5, 5, 8], [8, 15, 17]];
   function angsOf(s) {
     function ang(opp, x, y) { var v = (x * x + y * y - opp * opp) / (2 * x * y); v = Math.max(-1, Math.min(1, v)); return Math.round(Math.acos(v) * 180 / Math.PI); }
@@ -5641,7 +5641,7 @@ E("u8-tangent-right-angle", 8, ["9.4"], 1, "gen", function () {
 }, ["Utilise la propriété de la tangente : quel angle un rayon forme-t-il avec une tangente au point où elle touche le cercle ?", "Le rayon OT se termine en T, le point exact où la tangente touche le cercle."]);
 
 // 2. 9.4 L2 num, CR 3: tangent length from a right triangle with a triple.
-E("u8-tangent-length", 8, ["9.4"], 2, "gen", function () {
+E("u8-tangent-length", 8, ["9.4"], 1, "gen", function () {
   var tr = pick(U8_TRIPLES), k = pick([1, 2]);
   var legA = tr[0] * k, legB = tr[1] * k, hyp = tr[2] * k;
   var swap = Math.random() < 0.5;
@@ -5698,7 +5698,7 @@ E("u8-chord-perp-bisects", 8, ["9.6"], 1, "gen", function () {
 }, ["Utilise la propriété de la corde : que fait la perpendiculaire qui va du centre à une corde ?", "Le pied de la perpendiculaire est M, le point où OM rencontre AB à angle droit."]);
 
 // 4. 9.6 L2 num, CR 3: chord length from the radius and the distance to the chord.
-E("u8-chord-length", 8, ["9.6"], 2, "gen", function () {
+E("u8-chord-length", 8, ["9.6"], 1, "gen", function () {
   var tr = pick(U8_TRIPLES), k = pick([1, 2]);
   var d = tr[0] * k, half = tr[1] * k, r = tr[2] * k;
   if (Math.random() < 0.5) { var tmp = d; d = half; half = tmp; }
@@ -5937,7 +5937,7 @@ E("u9-prob-in-media", 9, ["12.1"], 1, "var", varset([
   }
 ]), ["La probabilité se présente comme une chance, une cote ou un pourcentage de chance qu'un événement arrive.", "Cherche dans les quatre textes des mots comme chance, 1 sur 4 ou pour cent, liés à un événement futur."]);
 
-E("u9-assumption-limit", 9, ["12.2"], 2, "var", varset([
+E("u9-assumption-limit", 9, ["12.2"], 1, "var", varset([
   function(){
     return mcq("Un élève dit que la probabilité d'obtenir face au lancer d'une pièce est \\(\\frac{1}{2}\\). Quelle option énonce l'hypothèse derrière cette probabilité et sa limite ?",
       {t:"Elle suppose que la pièce et le lancer sont équitables ; elle échoue si la pièce est pliée ou lancée de façon inégale", fb:"Exact : des chances égales demandent une pièce équitable, et un dommage ou un lancer inégal brise cette hypothèse."},
@@ -6152,7 +6152,7 @@ E("u9-classify-probability", 9, ["12.4"], 1, "var", varset([
 // - Nombres formatés littéraux écrits dans le texte statique, pour la réconciliation avec les guides : "4 000" (1 fois, les 4 000 ménages) et "2 000" (2 fois, l'envoi de 2 000 piles), tous deux avec une espace insécable. Aucun autre nombre formaté littéral dans le texte : pas de décimale, pas de %, pas de $. Les codes d'indicateurs ("11.1" à "11.10") restent inchangés, comme exigé.
 // - Bay Street gardé comme nom de rue; le prénom Jordan reste inchangé. "Grade 4 / Grade 9" rendus par "4e année / 9e année" selon l'usage scolaire.
 
-E("u9-collection-problem", 9, ["11.1"], 2, "var", varset([
+E("u9-collection-problem", 9, ["11.1"], 1, "var", varset([
   function(){
     return mcq("Pour savoir ce que toute une ville pense de la construction d'un nouvel aréna, un journaliste interroge seulement des partisans qui sortent d'un match de hockey dans l'ancien aréna. Quel est le principal problème de cette collecte de données ?",
       {t:"Biais, parce que les partisans à un seul match ne représentent pas toute la ville étudiée", fb:"Exact : le groupe interrogé est d'un seul côté, donc les résultats favorisent les partisans et oublient les autres résidents."},
@@ -6257,7 +6257,7 @@ E("u9-collection-biggest-threat", 9, ["11.1"], 3, "var", varset([
   }
 ]), ["Deux influences peuvent apparaître ensemble : juge laquelle fait le plus de dommage à la confiance qu'on peut avoir dans les résultats.", "Demande-toi quel problème change les réponses elles-mêmes, pas seulement le coût ou l'horaire de l'étude."]);
 
-E("u9-match-influence", 9, ["11.2"], 2, "var", varset([
+E("u9-match-influence", 9, ["11.2"], 1, "var", varset([
   function(){
     return mcq("Une ville veut sonder chaque ménage au sujet des réparations de routes. Imprimer et poster un long sondage aux 4 000 ménages, avec du personnel pour lire les réponses, utiliserait tout le budget annuel des sondages. Quelle influence cette situation illustre-t-elle ?",
       {t:"Coût, parce que joindre toute la population dépenserait tout le budget des sondages", fb:"Exact : l'argent est l'influence qui limite, car une couverture complète coûte plus que ce que la ville peut dépenser."},
@@ -6419,7 +6419,7 @@ E("u9-use-whole-population", 9, ["11.4"], 1, "var", varset([
   }
 ]), ["Toute une population fonctionne quand le groupe est petit, tout le monde est facile à joindre, et les tests ne détruisent rien.", "Élimine toute option où le groupe est énorme ou où les tests détruiraient les objets."]);
 
-E("u9-population-limitation", 9, ["11.5"], 2, "var", varset([
+E("u9-population-limitation", 9, ["11.5"], 1, "var", varset([
   function(){
     return mcq("Un fabricant veut savoir combien d'heures ses chandelles brûlent. Brûler une chandelle pour la mesurer l'utilise au complet. Quelle limite explique le mieux pourquoi on utilise un échantillon au lieu de toute la population ?",
       {t:"Tester toute la population détruirait chaque chandelle du stock étudié", fb:"Exact : chaque test consume la chandelle, donc tester toutes les chandelles ne laisse rien à vendre ou à utiliser."},
@@ -6515,7 +6515,7 @@ E("u9-generalization-critique", 9, ["11.6"], 3, "var", varset([
   }
 ]), ["Teste l'affirmation contre son échantillon : vérifie la taille, puis vérifie si l'échantillon correspond à tout le groupe affirmé.", "Imagine qui manque dans l'échantillon; les groupes manquants sont où une généralisation brise habituellement."]);
 
-E("u9-rubric-missing-part", 9, ["11.7"], 2, "var", varset([
+E("u9-rubric-missing-part", 9, ["11.7"], 1, "var", varset([
   function(){
     return mcq("Une grille d'évaluation pour un projet de données évalue le choix d'une méthode de collecte de données avec des considérations sociales, le choix d'une population ou d'un échantillon avec une justification, et la communication des résultats. Quelle partie requise manque dans cette grille ?",
       {t:"Une question de recherche que le projet cherche à répondre avec des données recueillies", fb:"Exact : la grille n'évalue jamais si le projet a une question claire qui guide l'étude."},
@@ -6554,7 +6554,7 @@ E("u9-rubric-missing-part", 9, ["11.7"], 2, "var", varset([
   }
 ]), ["Garde la liste complète de la grille en tête, puis coche chaque partie que la grille décrite couvre déjà.", "Liste d'abord les quatre parties requises; la manquante est celle qui n'est jamais nommée dans l'énoncé."]);
 
-E("u9-plan-element", 9, ["11.8"], 2, "var", varset([
+E("u9-plan-element", 9, ["11.8"], 1, "var", varset([
   function(){
     return mcq("Un plan de projet dit que les intervieweurs demanderont la permission de chaque personne avant de commencer et garderont les noms hors de tous les formulaires de réponses. À quel élément du plan de projet ce détail appartient-il ?",
       {t:"La méthode de collecte de données, dans les considérations sociales qui protègent les participants", fb:"Exact : la permission et des formulaires sans noms sont des considérations sociales bâties dans la façon de recueillir les données."},
