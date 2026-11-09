@@ -895,7 +895,7 @@ E("u1-ooo-calculator", 1, ["6.3"], 1, "gen", function () {
 }, ["Entre l'expression complète d'un coup, avec les touches de parenthèses autour des parties regroupées.", "Commence par les parenthèses les plus intérieures si tu vérifies la valeur par étapes."]);
 
 // 7. L2, 6.4, CR 2: find the first error in a worked solution, MC.
-E("u1-ooo-first-error", 1, ["6.4"], 1, "gen", function () {
+E("u1-ooo-first-error", 1, ["6.4"], 2, "gen", function () {
   var scen = ri(0, 3);
   var expr, stepTexts, errIdx, correctVal, errExplain;
   if (scen === 0) {
@@ -1137,7 +1137,7 @@ E("u2-root-between", 2, ["6.8"], 1, "gen", function(){
     {mode:"between", a:a, b:b});
 }, ["Mets les deux nombres donnés au carré pour transformer la question en intervalle pour le nombre lui-même.", "Vérifie quel candidat se trouve entre les deux carrés que tu viens de trouver."]);
 
-E("u2-spot-error", 2, ["6.10"], 1, "gen", function(){
+E("u2-spot-error", 2, ["6.10"], 2, "gen", function(){
   var mode=ri(1,4);
   if(mode===1){
     var c, R;
@@ -1227,14 +1227,17 @@ E("u2-sa-tri-context", 2, ["9.2"], 2, "gen", function(){
     {mode:"bar-box", a:a, b:b, c:c, L:L});
 }, ["Dessine le prisme et étiquette chaque face avant de calculer.", "Trouve d'abord les deux extrémités triangulaires, puis additionne les rectangles le long de la longueur."]);
 
-E("u2-overlap", 2, ["9.1"], 2, "gen", function(){
+E("u2-overlap", 2, ["9.1"], 1, "gen", function(){
   var p=ri(2,11), q=ri(2,10);
   var bl=ri(p+2,p+8), bw=ri(q+2,q+8);
-  if(pick(["overlap","hidden"])==="overlap"){
-    return numq("Une petite boîte est posée sur une plus grande boîte qui mesure "+bl+" cm de long et "+bw+" cm de large. Les deux boîtes se touchent sur un rectangle de "+p+" cm sur "+q+" cm. Quelle est l'aire du chevauchement, en centimètres carrés ?", p*q, 0.01,
-      "Le chevauchement est le rectangle où les boîtes se touchent : \\[ \\begin{aligned} A &= "+p+" \\times "+q+" \\\\ &= "+(p*q)+" \\end{aligned} \\] L'aire du chevauchement est <b>"+(p*q)+" cm\\(^{2}\\)</b>.",
-      {mode:"overlap", p:p, q:q});
-  }
+  return numq("Une petite boîte est posée sur une plus grande boîte qui mesure "+bl+" cm de long et "+bw+" cm de large. Les deux boîtes se touchent sur un rectangle de "+p+" cm sur "+q+" cm. Quelle est l'aire du chevauchement, en centimètres carrés ?", p*q, 0.01,
+    "Le chevauchement est le rectangle où les boîtes se touchent : \\[ \\begin{aligned} A &= "+p+" \\times "+q+" \\\\ &= "+(p*q)+" \\end{aligned} \\] L'aire du chevauchement est <b>"+(p*q)+" cm\\(^{2}\\)</b>.",
+    {mode:"overlap", p:p, q:q});
+}, ["Le chevauchement est le rectangle où les deux solides se touchent.", "Trouve d'abord l'aire du rectangle de contact, puis pense au nombre de faces qu'il cache."]);
+
+E("u2-overlap-hidden", 2, ["9.1"], 2, "gen", function(){
+  var p=ri(2,11), q=ri(2,10);
+  var bl=ri(p+2,p+8), bw=ri(q+2,q+8);
   return numq("Une petite boîte est posée sur une plus grande boîte qui mesure "+bl+" cm de long et "+bw+" cm de large. Les deux boîtes se touchent sur un rectangle de "+p+" cm sur "+q+" cm. Quelle aire de la surface est cachée là où les deux boîtes se touchent, en centimètres carrés ?", 2*p*q, 0.01,
     "Le rectangle de contact cache une face sur chaque boîte, donc il est caché deux fois : \\[ \\begin{aligned} \\text{cachée} &= 2\\times("+p+" \\times "+q+") \\\\ &= 2\\times "+(p*q)+" \\\\ &= "+(2*p*q)+" \\end{aligned} \\] L'aire de la surface cachée est <b>"+(2*p*q)+" cm\\(^{2}\\)</b>.",
     {mode:"hidden-total", p:p, q:q});
@@ -1715,7 +1718,7 @@ E("u3-difference-of-powers", 3, ["3.14"], 1, "gen", function () {
     { mode: "difference-" + mode });
 }, ["Calcule chaque puissance séparément avant de soustraire.", "Trouve la valeur de la première puissance, puis celle de la deuxième, puis soustrais."]);
 
-E("u3-find-the-error", 3, ["3.15"], 1, "gen", function () {
+E("u3-find-the-error", 3, ["3.15"], 2, "gen", function () {
   var tuples = [];
   for (var a = 2; a <= 3; a++) for (var m = 2; m <= 4; m++) for (var n = 2; n <= 4; n++) for (var p = 2; p <= 4; p++) {
     if (m * n === m + n) continue;
@@ -2062,7 +2065,7 @@ E("u4-mult-div-mixed", 4, ["8.12"], 1, "gen", function(){
   return mcq("Multiplie : \\(2(3x+4)\\)",{t:u4m(0,6,8),fb:"Exact : le monôme multiplie chaque terme."},[{t:u4m(0,6,4),fb:"La constante n'a pas été multipliée."},{t:u4m(0,3,8),fb:"Le terme en x n'a pas été multiplié."},{t:u4m(0,6,-8),fb:"Le produit de la constante a le mauvais signe."}],"La multiplication de chaque terme donne <b>"+u4m(0,6,8)+"</b>.",{mode:"multiply",cr:2});
 }, ["Décide d'abord si le monôme multiplie ou divise, puis applique-le à chaque terme.", "Applique d'abord l'opération au premier terme, puis à chaque terme restant."]);
 
-E("u4-error-step", 4, ["8.13"], 1, "gen", function(){
+E("u4-error-step", 4, ["8.13"], 2, "gen", function(){
   for(var att=0;att<200;att++){
     var a=ri(3,9),b=ri(2,9),c=ri(2,8),d=ri(2,9);
     if(a-c===0||b-d===0)continue;
@@ -6042,7 +6045,7 @@ E("u9-same-number-two-sides", 9, ["12.3"], 2, "var", varset([
   }
 ]), ["Le même nombre peut être présenté par son résultat opposé : ce qui ne s'est pas produit, sur le même total.", "Soustrais le nombre énoncé du total pour trouver le nombre que l'autre côté mettra en avant."]);
 
-E("u9-combined-decision", 9, ["12.4"], 2, "var", varset([
+E("u9-combined-decision", 9, ["12.4"], 1, "var", varset([
   function(){
     return mcq("Un entraîneur doit choisir un tireur pour un lancer franc final. La chance du tableau compte des résultats également probables, les essais d'entraînement montrent que le tireur a réussi 18 de ses 20 lancers cette semaine, et l'entraîneur sent que ce joueur reste calme sous pression. Quelle option décrit comment les trois sortes de probabilité se combinent dans cette décision ?",
       {t:"Le tableau donne la probabilité théorique, le bilan d'entraînement donne la probabilité expérimentale, et le sentiment de calme est un jugement subjectif", fb:"Exact : les résultats égaux sont théoriques, les résultats d'essais sont expérimentaux, et un sentiment est subjectif."},
@@ -7321,6 +7324,7 @@ var CR_MARKS={
  "u2-sa-single": 3,
  "u2-sa-tri-context": 3,
  "u2-overlap": 2,
+ "u2-overlap-hidden": 2,
  "u2-sa-composite-rect": 3,
  "u2-sa-problem": 2,
  "u2-sa-cyl-on-prism": 3,
